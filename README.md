@@ -2,28 +2,9 @@
 
 ![LX preview](https://github.com/LXExplorer/LX/blob/main/preview.png?raw=true)
 
-LX is a Roblox explorer built for people who actually need to inspect a live game, not just poke around a tree for a minute. It started as a Dex-style tool and then grew into something more direct: faster inspection, more control over what is visible, and a few tools that make debugging less annoying.
+LX is a debugging explorer
 
-The repo keeps the main explorer script, a loader, a plugin library, and a small set of example plugins. If you want to load it in Roblox, use the loader. If you want to build on top of it, use the library and the APIs in [lib/LX.lua](lib/LX.lua).
-
-## Why LX exists
-
-Dex was a reasonable starting point, but it left a lot of practical gaps. The real problem is not whether an explorer can show a tree. It is whether it can help you find the right object, understand the state around it, and actually do something with it without fighting the UI.
-
-LX exists for that. It keeps the explorer workflow familiar, adds a few tools that matter in real debugging sessions, and leaves room for plugins and custom theme work instead of locking everything into a single static build.
-
-## Features
-
-### Explorer
-
-- Browse the instance hierarchy
-- Search for instances and navigate large trees
-- Rename, copy, paste, delete, and group objects
-- Teleport to an instance or zoom in on it
-- Inspect instance properties and edit supported values
-- Show read-only properties as disabled instead of pretending they are editable
-
-### Built-in tools
+### Tools
 
 | Tool | Purpose |
 | --- | --- |
@@ -49,16 +30,11 @@ This is intentionally capability-dependent. Some features only work when the exe
 
 LX ships with several built-in themes and supports custom theme imports:
 
-- One Dark
-- Tokyo Night
-- Solarized
-- Rose Pine
-- Custom themes
-- Low-performance mode for weaker systems
+- 2021 Studio
+- Everforest
+- Github Dark 
 
-Theme configuration is kept near the top of the main script, with an easy place to change icons and intro behavior.
-
-## Repository layout
+## Repository
 
 - [Loader.lua](Loader.lua) - Fetches the public library and loads the main script when needed
 - [LX.lua](LX.lua) - The main explorer implementation
@@ -67,9 +43,7 @@ Theme configuration is kept near the top of the main script, with an easy place 
 - [examples/](examples) - Example plugin and loader scripts
 - [docs/Plugins.md](docs/Plugins.md) - Plugin authoring notes
 
-## Quick start
-
-Run this in a Roblox executor:
+## LX's Loader
 
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/LXExplorer/LX/main/Loader.lua"))()
@@ -98,7 +72,7 @@ See [examples/LoadPlugins.lua](examples/LoadPlugins.lua) for the same pattern in
 
 ## Plugin API
 
-The plugin system is intentionally small and straightforward. The library exposes a few core hooks:
+The plugin system is intentionally small and straightforward. The library exposes a few hooks:
 
 ```lua
 local Library = loadstring(readfile("lib/LX.lua"))()
@@ -116,7 +90,7 @@ A plugin file should return a function that receives the library. The authoritat
 - `Library.Theme(name, colors)`
 - `Library.LoadPlugin("plugins/QuickSearch.lua")`
 
-The loader is not a second explorer. It is a thin way to pull and initialize the real script while giving plugins a stable library to work with.
+The loader is not a second explorer. It is a thin way to pull and run the real script while giving plugins a library to work with.
 
 ## Notes
 
@@ -124,5 +98,8 @@ The loader is not a second explorer. It is a thin way to pull and initialize the
 - [examples/MyPlugin.lua](examples/MyPlugin.lua) is the smallest practical starting point for a custom plugin.
 - [CHANGELOG.md](CHANGELOG.md) has the project history and the public repo notes.
 - There is not a full plugin unload API yet. If you need a clean slate, restart the session.
+  
 
-This is not a polished "hello world" project. It is a real debugging tool for real Roblox work, with the rough edges kept in plain sight.
+Discord: https://discord.gg/x3eUsw4vdH
+
+Note: LX is discontinued but the bounty hunter is still on-going so report bugs to us in the Discord server to get a special badge!
