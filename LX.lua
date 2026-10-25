@@ -361,8 +361,12 @@ local UI = {
 local previous = UI.guiParent:FindFirstChild("delve")
 if previous then previous:Destroy() end
 
+K.TEXT_CLASSES = { TextLabel = true, TextButton = true, TextBox = true }
 local function new(class, props, parent)
 	local o = Instance.new(class)
+	if K.TEXT_CLASSES[class] and props.Font == nil and props.FontFace == nil then
+		o.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+	end
 	for k, v in pairs(props) do o[k] = v end
 	o.Parent = parent
 	return o
@@ -644,6 +648,62 @@ local function uiImage(props, parent, name, color)
 	return img
 end
 
+function K.loading(label)
+	local T = Configuration.Theme
+	local holder = label:FindFirstChild("lxloader")
+	if not holder then
+		local left = label.TextXAlignment == Enum.TextXAlignment.Left
+		holder = new("Frame", {
+			Name = "lxloader", AnchorPoint = Vector2.new(left and 0 or 0.5, 0.5),
+			Position = left and UDim2.new(0, 2, 0.5, 0) or UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(72, 4), BorderSizePixel = 0, ClipsDescendants = true, ZIndex = label.ZIndex + 1,
+		}, label)
+		new("UICorner", { CornerRadius = UDim.new(1, 0) }, holder)
+		local bar = new("Frame", {
+			Name = "bar", Size = UDim2.fromOffset(28, 4), BorderSizePixel = 0, ZIndex = label.ZIndex + 2,
+		}, holder)
+		new("UICorner", { CornerRadius = UDim.new(1, 0) }, bar)
+		label:GetPropertyChangedSignal("Text"):Connect(function()
+			if label.Text ~= "" then holder.Visible = false end
+		end)
+		Services.TweenService:Create(bar, TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Position = UDim2.fromOffset(44, 0) }):Play()
+	end
+	holder.BackgroundColor3 = T.Input
+	holder.bar.BackgroundColor3 = T.Accent
+	label.Text = ""
+	holder.Visible = true
+end
+
+function K.checkBox(parent, props)
+	local T = Configuration.Theme
+	local box = new("Frame", {
+		Name = "check", Size = UDim2.fromOffset(14, 14), BackgroundColor3 = T.Input, BorderSizePixel = 0,
+	}, parent)
+	for k, v in pairs(props or {}) do box[k] = v end
+	new("UICorner", { CornerRadius = UDim.new(0, 3) }, box)
+	local st = stroke(box, T.Border, 1)
+	local legs = {}
+	for i, d in ipairs({ { 5, 5 / 14, 8.5 / 14, 45 }, { 9, 8.6 / 14, 6.6 / 14, -45 } }) do
+		legs[i] = new("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(d[2], d[3]), Size = UDim2.fromOffset(d[1], 2),
+			Rotation = d[4], BorderSizePixel = 0, ZIndex = box.ZIndex + 1,
+		}, box)
+		new("UICorner", { CornerRadius = UDim.new(1, 0) }, legs[i])
+	end
+	local function paint(on, dim)
+		local Th = Configuration.Theme
+		box.BackgroundColor3 = on and Th.Accent or Th.Input
+		st.Color = on and Th.Accent or Th.Border
+		box.BackgroundTransparency = dim and 0.5 or 0
+		for _, l in ipairs(legs) do
+			l.Visible = on
+			l.BackgroundColor3 = Th.AccentText
+			l.BackgroundTransparency = dim and 0.5 or 0
+		end
+	end
+	return box, paint
+end
+
 local function windowButton(parent, kind, size)
 	local T = Configuration.Theme
 	local b = new("TextButton", {
@@ -662,16 +722,8 @@ local function windowButton(parent, kind, size)
 		strokes[#strokes + 1] = f
 	end
 	if kind == "close" then
-		if UIIcon.winclose then
-			images[1] = new("ImageLabel", {
-				AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
-				Size = UDim2.fromOffset(16, 16), BackgroundTransparency = 1, Image = UIIcon.winclose,
-				ImageColor3 = T.Text, ZIndex = 10,
-			}, b)
-		else
-			line(12, 45)
-			line(12, -45)
-		end
+		line(11, 45)
+		line(11, -45)
 	else
 		line(10, 0)
 	end
@@ -2272,6 +2324,10 @@ renderProps = function()
 				Name = "catbar", Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 1, -1),
 				BackgroundColor3 = Color3.fromRGB(18, 18, 18), BorderSizePixel = 0, ZIndex = 3,
 			}, header)
+			new("Frame", {
+				Name = "catbartop", Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 0, 0),
+				BackgroundColor3 = Color3.fromRGB(18, 18, 18), BorderSizePixel = 0, ZIndex = 3,
+			}, header)
 			header.MouseEnter:Connect(function() header.BackgroundColor3 = Configuration.Theme.Panel end)
 			header.MouseLeave:Connect(function() header.BackgroundColor3 = Configuration.Theme.Header end)
 			header.MouseButton1Click:Connect(function()
@@ -2319,6 +2375,19 @@ renderProps = function()
 						local text, color = fmt(v)
 						valueLabel.Text = text
 						valueLabel.TextColor3 = readOnly and GREY or color
+						if typeof(v) == "boolean" then
+							valueLabel.Text = ""
+							if not row:FindFirstChild("check") then
+								local _, paintCheck = K.checkBox(row, {
+									AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0.45, 8, 0.5, 0), ZIndex = 2,
+								})
+								row:SetAttribute("lxcheck", true)
+								valueLabel:SetAttribute("lxcheck", true)
+								K.propChecks = K.propChecks or setmetatable({}, { __mode = "k" })
+								K.propChecks[row] = paintCheck
+							end
+							K.propChecks[row](v, readOnly)
+						end
 						if typeof(v) == "Color3" then
 							valueLabel.Position = UDim2.new(0.45, 28, 0, 0)
 							valueLabel.Size = UDim2.new(0.55, -44, 1, 0)
@@ -5166,10 +5235,13 @@ function K.window(name, title, font)
 	win.frame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 	do
 		local header = win.pane.header
-		header.Size = UDim2.new(1, 0, 0, K.TITLE_H - 1)
+		local H = K.TITLE_H - 6
+		header.Size = UDim2.new(1, 0, 0, H - 1)
 		header.ZIndex = 2
-		win.body.Position = UDim2.fromOffset(0, K.TITLE_H)
-		win.body.Size = UDim2.new(1, 0, 1, -K.TITLE_H)
+		win.body.Position = UDim2.fromOffset(0, H)
+		win.body.Size = UDim2.new(1, 0, 1, -H)
+		win.minBtn.Size = UDim2.fromOffset(30, H - 5)
+		if win.closeBtn then win.closeBtn.Size = UDim2.fromOffset(30, H - 5) end
 	end
 	setPanes(win, { win.pane }, "stack")
 	function win.show(offset)
@@ -5434,7 +5506,7 @@ local function buildScriptWindow()
 		local token = sw.token
 		sw.setEditing(false)
 		sw.scroll.Visible = false
-		sw.status.Text = "Loading..."
+		K.loading(sw.status)
 		sw.status.Visible = true
 		task.spawn(function()
 			local okR, done = pcall(K.renderSource, sw, text, token)
@@ -5669,7 +5741,7 @@ function Delve.openScriptViewer(script)
 	sw.token += 1
 	local token = sw.token
 	showToolWindow(sw, 0)
-	sw.status.Text = "Decompiling..."
+	K.loading(sw.status)
 	sw.status.Visible = not sw.editing
 	sw.scroll.Visible = false
 
@@ -5684,7 +5756,7 @@ function Delve.openScriptViewer(script)
 		source = K.cleanSource(source)
 		if K.edits[script] then source = K.loadEdit(script) or source end
 		sw.source = source
-		sw.status.Text = "Loading..."
+		K.loading(sw.status)
 		local okR, done = pcall(K.renderSource, sw, source, token)
 		if sw.token ~= token then return end
 		if not (okR and done) then
@@ -6693,7 +6765,6 @@ local function bootApps()
 		data.options = {
 			IncrementNames = Options.IncrementNames, ExpandOnSelect = Options.ExpandOnSelect,
 			ShowHiddenServices = Options.ShowHiddenServices, SelectionBoxes = Options.SelectionBoxes ~= false,
-			LauncherVisible = Options.LauncherVisible ~= false,
 			NoAnimations = Options.NoAnimations == true, ClickToSelect = Options.ClickToSelect == true, ForceLowEnd = Options.ForceLowEnd == true,
 		}
 		local ok, json = pcall(Http.JSONEncode, Http, data)
@@ -6877,45 +6948,23 @@ local function bootApps()
 		end)
 	end
 
-	-- Toggle switch (kept under the old name so Apps.checkbox / plugins keep working)
 	local function checkbox(parent, order, text, get, set)
 		local T = Configuration.Theme
-		local TW, TH, KN = 30, 16, 12
 		local b = new("TextButton", {
 			Size = UDim2.new(1, 0, 0, touchH(26)), BackgroundColor3 = T.Hover, BackgroundTransparency = 1,
 			BorderSizePixel = 0, Text = "", AutoButtonColor = false, LayoutOrder = order, ZIndex = 3,
 		}, parent)
 		new("UICorner", { CornerRadius = UDim.new(0, 4) }, b)
 		new("TextLabel", {
-			BackgroundTransparency = 1, Position = UDim2.fromOffset(8, 0), Size = UDim2.new(1, -(TW + 20), 1, 0),
+			BackgroundTransparency = 1, Position = UDim2.fromOffset(8, 0), Size = UDim2.new(1, -34, 1, 0),
 			Font = Enum.Font.SourceSans, TextSize = 15, TextColor3 = T.Text, Text = text,
 			TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 4,
 		}, b)
-		local track = new("Frame", {
-			AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -6, 0.5, 0), Size = UDim2.fromOffset(TW, TH),
-			BackgroundColor3 = T.Input, BorderSizePixel = 0, ZIndex = 4,
-		}, b)
-		new("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
-		local trackStroke = stroke(track, T.Border, 1)
-		local knob = new("Frame", {
-			AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 2, 0.5, 0), Size = UDim2.fromOffset(KN, KN),
-			BackgroundColor3 = T.Dim, BorderSizePixel = 0, ZIndex = 5,
-		}, track)
-		new("UICorner", { CornerRadius = UDim.new(1, 0) }, knob)
-		local first = true
+		local _, paintBox = K.checkBox(b, {
+			AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), ZIndex = 4,
+		})
 		local function paint()
-			local Th = Configuration.Theme
-			local on = get() and true or false
-			local pos = on and UDim2.new(0, TW - KN - 2, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
-			track.BackgroundColor3 = on and Th.Accent or Th.Input
-			trackStroke.Color = on and Th.Accent or Th.Border
-			knob.BackgroundColor3 = on and Th.AccentText or Th.Dim
-			if first or Options.LowEnd or Options.NoAnimations then
-				knob.Position = pos
-			else
-				Services.TweenService:Create(knob, TweenInfo.new(0.14, Enum.EasingStyle.Quint), { Position = pos }):Play()
-			end
-			first = false
+			paintBox(get() and true or false, false)
 		end
 		b.MouseEnter:Connect(function() b.BackgroundTransparency = 0 end)
 		b.MouseLeave:Connect(function() b.BackgroundTransparency = 1 end)
@@ -7102,9 +7151,6 @@ local function bootApps()
 		checkbox(scroll, nextOrder(), "Selection outlines",
 			function() return Options.SelectionBoxes ~= false end,
 			function(v) Options.SelectionBoxes = v; refreshSelectionBoxes() end)
-		checkbox(scroll, nextOrder(), "Show app dock beside Explorer",
-			function() return Options.LauncherVisible ~= false end,
-			function(v) Options.LauncherVisible = v end)
 		end)
 
 		safe("Themes", function()
@@ -7233,7 +7279,7 @@ local function bootApps()
 		while Fishy.loading do wait(0.1) end
 		if Fishy.lib then return Fishy.lib end
 		Fishy.loading = true
-		onStatus("Grabbing Fishilizer...")
+		onStatus(nil, true)
 		local genv = (getgenv and getgenv()) or env
 		local prior = genv.FISHILIZER_CONFIG
 		genv.FISHILIZER_NO_AUTORUN = true
@@ -7245,7 +7291,7 @@ local function bootApps()
 		end)
 		genv.FISHILIZER_CONFIG = prior
 		if ok and type(lib) == "table" then
-			onStatus("Loading API data...")
+			onStatus(nil, true)
 			pcall(lib.Init)
 			Fishy.lib = lib
 		else
@@ -7353,7 +7399,10 @@ local function bootApps()
 			if kind ~= "place" and #list == 0 then status.Text = "Select something in the Explorer first." return end
 			busy = true
 			task.spawn(function()
-				local function say(t) status.Text = t end
+				local function say(t, busyNow)
+					status.Visible = true
+					if busyNow then K.loading(status) else status.Text = t end
+				end
 				local Fish = Fishy.get(say)
 				if not Fish then busy = false return end
 				local opts = table.clone(Fishy.opts)
@@ -7490,11 +7539,18 @@ local function bootApps()
 		watchHover(dock)
 		stroke(dock)
 
-		G.toggle = uiImage({
-			ClassName = "ImageButton", Name = "toggle", AnchorPoint = Vector2.new(0.5, 1),
+		G.toggle = new("ImageButton", {
+			Name = "toggle", AnchorPoint = Vector2.new(0.5, 1), BackgroundTransparency = 1, Image = "",
 			Position = UDim2.new(0.5, 0, 1, -1), Size = UDim2.fromOffset(22, 22), ZIndex = 10066,
 			AutoButtonColor = false,
-		}, dock, "chevron_right", Color3.new(1, 1, 1))
+		}, dock)
+		for _, d in ipairs({ { -2.5, 45 }, { 2.5, -45 } }) do
+			local leg = new("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, -1, 0.5, d[1]), Size = UDim2.fromOffset(7, 2),
+				Rotation = d[2], BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, ZIndex = 10067,
+			}, G.toggle)
+			new("UICorner", { CornerRadius = UDim.new(1, 0) }, leg)
+		end
 						G.toggle.Activated:Connect(function() G.collapsed = not G.collapsed end)
 
 		G.grid = new("ScrollingFrame", {
@@ -7522,7 +7578,7 @@ local function bootApps()
 		local side = "left"
 		local function place()
 			local ok, w = pcall(ownerOf, Panes.explorer)
-			local show = Options.LauncherVisible ~= false and ok and w and isOpen(w)
+			local show = ok and w and isOpen(w)
 			dock.Visible = show and true or false
 			if not show then tip.Visible = false return end
 			local k = uiK()
@@ -8652,7 +8708,8 @@ task.spawn(function()
 			end
 		end
 		inst.MouseButton1Click:Connect(function()
-			status.Text = "Installing..."
+			status.Visible = true
+			K.loading(status)
 			local ok, err = P.install(urlBox.Text)
 			status.Text = ok and "Installed." or ("Failed: " .. tostring(err))
 			if ok then urlBox.Text = "" end
