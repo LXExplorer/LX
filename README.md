@@ -31,7 +31,9 @@ The Discord server is where people hang out, test things out, report bugs, and s
   <img src="preview.png" width="960" alt="LX preview" />
 </div>
 
-## what it does
+## what LX does
+
+LX gives you a small set of tools for inspecting and digging through live Roblox data.
 
 - Script Viewer
 - 3D Viewer
@@ -41,15 +43,17 @@ The Discord server is where people hang out, test things out, report bugs, and s
 - Script and place dumping when your executor allows it
 - Remote, nil instance, attribute, tag, and bytecode export
 
+Some features only work when the executor exposes the APIs needed for them.
+
 ## quick start
 
-Load the library with the project loader:
+Load the project loader:
 
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/LXExplorer/LX/main/Loader.lua"))()
 ```
 
-That loads the library and opens the main explorer if it is not already running. It also exposes the library as `_G.LXLibrary`.
+This loads the library and opens the main explorer if it is not already running. It also exposes the library as `_G.LXLibrary`.
 
 To load the bundled example plugins:
 
@@ -60,26 +64,11 @@ Library.LoadPlugin("plugins/CopyPaths.lua")
 Library.LoadPlugin("plugins/PlaceInfo.lua")
 ```
 
-See [examples/LoadPlugins.lua](examples/LoadPlugins.lua) for the same pattern in one file.
+## docs
 
-## repo layout
+### plugin API
 
-- [Loader.lua](Loader.lua) is the tiny loader that grabs the public library and runs the main script when needed
-- [LX.lua](LX.lua) is the main explorer implementation
-- [lib/LX.lua](lib/LX.lua) is the library API for plugin development
-- [plugins/](plugins) has the bundled plugins
-- [examples/](examples) has example loaders and plugin scripts
-- [docs/Plugins.md](docs/Plugins.md) has the plugin authoring notes
-
-## included plugins
-
-- Quick Search
-- Copy Paths
-- Place Info
-
-## plugin API
-
-The plugin system is small and simple. The library exposes a few hooks:
+The plugin system is small and simple. A plugin file should return a function that receives the library.
 
 ```lua
 local Library = loadstring(readfile("lib/LX.lua"))()
@@ -87,7 +76,7 @@ local plugin = loadstring(readfile("examples/MyPlugin.lua"))()
 plugin(Library)
 ```
 
-A plugin file should return a function that receives the library. The real notes live in [docs/Plugins.md](docs/Plugins.md), but the main API surface is:
+Main API surface:
 
 - `Library.Register(name, setup)`
 - `Library.AddApp({ name = "My App", icon = "Folder", open = function() end })`
@@ -97,13 +86,38 @@ A plugin file should return a function that receives the library. The real notes
 - `Library.Theme(name, colors)`
 - `Library.LoadPlugin("plugins/QuickSearch.lua")`
 
-The loader is not a second explorer. It is a thin way to pull and run the real script while giving plugins a library to work with.
+The loader is not a second explorer. It is just a thin way to pull and run the real script while giving plugins a library to work with.
 
-## a few notes
+### plugin examples
 
-- [docs/Plugins.md](docs/Plugins.md) has more plugin details
-- [examples/MyPlugin.lua](examples/MyPlugin.lua) is the simplest place to start a custom plugin
-- There is not a full plugin unload API yet. If you need a clean slate, restart the session
+The repo already includes a few simple examples:
+
+- `plugins/QuickSearch.lua`
+- `plugins/CopyPaths.lua`
+- `plugins/PlaceInfo.lua`
+- `examples/MyPlugin.lua`
+- `examples/LoadPlugins.lua`
+
+### repo layout
+
+- [Loader.lua](Loader.lua) loads the public library and runs the main script when needed
+- [LX.lua](LX.lua) is the main explorer implementation
+- [lib/LX.lua](lib/LX.lua) is the library API for plugin development
+- [plugins/](plugins) contains the bundled plugins
+- [examples/](examples) contains example loaders and plugin scripts
+- [docs/Plugins.md](docs/Plugins.md) has the deeper plugin authoring notes
+
+## included plugins
+
+- Quick Search
+- Copy Paths
+- Place Info
+
+## notes
+
+- This project is mainly for educational and debugging use.
+- Some features depend on executor capabilities and may not work in every environment.
+- There is not a full plugin unload API yet. If you need a clean slate, restart the session.
 
 <div align="center">
   <img src="AllKnowing.gif" width="420" alt="LX For The All Knowing" />
@@ -113,7 +127,7 @@ The loader is not a second explorer. It is a thin way to pull and run the real s
 
 This is the private tester version of LX. It is for trusted users, contributors, and people with access to the stronger build.
 
-It includes:
+Included features:
 
 - Script editing
 - Datastore inspection and management
