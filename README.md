@@ -17,9 +17,9 @@
   </p>
 </div>
 
-LX is a Roblox debugging suite inspired by Dex Explorer. It is built for poking around games, scripts, and instances without turning every little thing into a headache.
+LX is a Roblox debugging suite inspired by Dex Explorer. It is built for poking around games, scripts, and instances without making everything feel like a chore.
 
-The Discord server is the place to hang out, swap ideas, report bugs, and see what people are messing with.
+The Discord server is where people hang out, test things out, report bugs, and share what they are working on.
 
 > [!IMPORTANT]
 > LX is discontinued, but the bounty hunter is still going. If you find issues, report them in the Discord server and you might get a special badge.
