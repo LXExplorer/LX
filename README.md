@@ -103,7 +103,6 @@ The loader is not a second explorer. It is a thin way to pull and run the real s
 
 - [docs/Plugins.md](docs/Plugins.md) has more plugin details
 - [examples/MyPlugin.lua](examples/MyPlugin.lua) is the simplest place to start a custom plugin
-- [CHANGELOG.md](CHANGELOG.md) has the project history
 - There is not a full plugin unload API yet. If you need a clean slate, restart the session
 
 <div align="center">
