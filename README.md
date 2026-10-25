@@ -17,7 +17,7 @@
   </p>
 </div>
 
-LX is a debugging suite designed to compete with Dex Explorer in celebration of the fencing incident. It focuses on inspection, script analysis, object traversal, and debugging workflows useful when you need more visibility into a running Roblox experience.
+LX is a debugging suite designed to compete with Dex Explorer in celebration of the fencing incident.
 
 > Note: LX is discontinued, but the bounty hunter is still ongoing. If you find issues, report them in the Discord server to receive a special badge.
 
@@ -25,11 +25,8 @@ LX is a debugging suite designed to compete with Dex Explorer in celebration of 
   <img src="preview.png" width="960" alt="LX preview" />
 </div>
 
-## Why LX?
 
-LX includes a compact but useful set of tools for exploring scripts and instances in a running place. It is designed to give you a cleaner debugging workflow without sacrificing speed or usability.
-
-### Core tools
+### Tools
 
 - Script Viewer
 - 3D Viewer
