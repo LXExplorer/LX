@@ -6,7 +6,7 @@
   </p>
   <p>
     <a href="https://discord.gg/x3eUsw4vdH">
-      <img src="https://img.shields.io/badge/Discord-Join%20Server-5865F2?logo=discord&logoColor=white" alt="Discord" />
+      <img src="https://img.shields.io/badge/Discord-Join%20the%20server-5865F2?logo=discord&logoColor=white" alt="Discord" />
     </a>
     <a href="https://github.com/LXExplorer/LX">
       <img src="https://img.shields.io/badge/Language-Lua-2C2D72?logo=lua&logoColor=white" alt="Lua" />
@@ -17,7 +17,9 @@
   </p>
 </div>
 
-LX is a Roblox debugging suite inspired by Dex Explorer. It is built for poking around games, scripts, and instances without turning everything into a giant headache.
+LX is a Roblox debugging suite inspired by Dex Explorer. It is built for poking around games, scripts, and instances without turning every little thing into a headache.
+
+The Discord server is the place to hang out, swap ideas, report bugs, and see what people are messing with.
 
 > [!IMPORTANT]
 > LX is discontinued, but the bounty hunter is still going. If you find issues, report them in the Discord server and you might get a special badge.
@@ -62,12 +64,12 @@ See [examples/LoadPlugins.lua](examples/LoadPlugins.lua) for the same pattern in
 
 ## repo layout
 
-- [Loader.lua](Loader.lua) — grabs the public library and runs the main script when needed
-- [LX.lua](LX.lua) — the main explorer implementation
-- [lib/LX.lua](lib/LX.lua) — library API for plugin development
-- [plugins/](plugins) — bundled plugins
-- [examples/](examples) — example loader and plugin scripts
-- [docs/Plugins.md](docs/Plugins.md) — plugin authoring notes
+- [Loader.lua](Loader.lua) is the tiny loader that grabs the public library and runs the main script when needed
+- [LX.lua](LX.lua) is the main explorer implementation
+- [lib/LX.lua](lib/LX.lua) is the library API for plugin development
+- [plugins/](plugins) has the bundled plugins
+- [examples/](examples) has example loaders and plugin scripts
+- [docs/Plugins.md](docs/Plugins.md) has the plugin authoring notes
 
 ## included plugins
 
@@ -118,8 +120,8 @@ It includes:
 - Datastore inspection and management
 - Secret viewer
 - Better 3D viewer
-- 5 built-in plugins
+- 5 built in plugins
 - Priority support
 - Regular updates to keep the project from rotting
 
-This is the "more powerful" version of LX, kept for the people trusted to keep it alive.
+This is the more powerful version of LX, kept for the people trusted to keep it alive.
