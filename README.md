@@ -19,11 +19,17 @@
 
 LX is a debugging suite designed to compete with Dex Explorer in celebration of the fencing incident.
 
-> Note: LX is discontinued, but the bounty hunter is still ongoing. If you find issues, report them in the Discord server to receive a special badge.
+> [!IMPORTANT]
+> LX is discontinued, but the bounty hunter is still ongoing. If you find issues, report them in the Discord server to receive a special badge.
+
+> [!WARNING]
+> This project is primarily for educational and debugging use. Some functionality depends on executor capabilities and may not work in every environment.
 
 <div align="center">
   <img src="preview.png" width="960" alt="LX preview" />
 </div>
+
+## Overview
 
 ### Tools
 
