@@ -30,10 +30,6 @@ end
 -- Configs if you really need them but i just made these for myself for easy editing
 local Configuration = {
 	VANILLA = { AssetId = 114851699900089, IconSize = 32, Columns = 25 },
-	-- Optional animated icon on the intro card (sprite sheet / GIF frames). Image can be a url
-	-- (downloaded once with writefile, loaded with getcustomasset), a workspace file path, or an asset id.
-	-- IntroSprite = { Image = "https://example.com/sheet.png", FrameSize = Vector2.new(64, 64), Columns = 8, Frames = 32, FPS = 24 },
-	IntroSprite = nil,
 	Theme = {
 		Main = Color3.fromRGB(37, 37, 37), Surface = Color3.fromRGB(29, 29, 29),
 		Header = Color3.fromRGB(42, 42, 42), Input = Color3.fromRGB(23, 23, 23),
@@ -468,7 +464,7 @@ end
 local function iconForClass(cls) return iconCache[cls] or K.V[cls] or K.CLASS_ALIAS[cls] or K.V.Instance end
 
 local StudioIcons = {
-	enabled = true, folder = "LX/icons/studio",
+	enabled = true, folder = "LX/icons/studio3x",
 	available = {}, assets = {}, state = {}, queue = {}, active = 0, changed = false, byClass = {}, fs = {},
 }
 for name in string.gmatch(K.STUDIO_ICON_NAMES, "%S+") do StudioIcons.available[name] = true end
@@ -484,8 +480,8 @@ end
 function K.isPng(data) return type(data) == "string" and #data > 64 and data:sub(1, 4) == "\137PNG" end
 function K.studioDownload(name)
 	local url = name:find("/", 1, true)
-		and ("https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/studio-svg-textures/Shared/" .. name .. "@2x.png")
-		or ("https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/studio-svg-textures/Shared/InsertableObjects/Dark/Standard/" .. name .. "@2x.png")
+		and ("https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/studio-svg-textures/Shared/" .. name .. "@3x.png")
+		or ("https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/studio-svg-textures/Shared/InsertableObjects/Dark/Standard/" .. name .. "@3x.png")
 	local ok, res = pcall(function() return game:HttpGet(url) end)
 	if ok and K.isPng(res) then return res end
 	return nil
@@ -1062,7 +1058,7 @@ local function topLevel()
 end
 
 K.Support = {}
-function K.probeSupport(progress)
+function K.probeSupport()
 	local checks = {
 		{ "Custom assets", { "getcustomasset" } },
 		{ "File system", { "writefile" } }, { "File reading", { "readfile" } },
@@ -1072,12 +1068,9 @@ function K.probeSupport(progress)
 		{ "Save instance", { "saveinstance" } },
 	}
 	for i, c in ipairs(checks) do
-		progress(0.02 * i / #checks, "Checking support: " .. c[1])
 		local ok, fn = pcall(envFn, table.unpack(c[2]))
 		K.Support[c[1]] = ok and fn ~= nil
-		wait(0.06)
 	end
-	progress(0.02, "Measuring performance...")
 	local frames, total = 0, 0
 	local t0 = os.clock()
 	while frames < 30 and os.clock() - t0 < 1.5 do
@@ -1090,10 +1083,8 @@ function K.probeSupport(progress)
 	Delve.Support = K.Support
 end
 
-function Cache.preload(progress)
-	local startedAt = os.clock()
-	pcall(K.probeSupport, progress)
-	progress(0.03, "Scanning services...")
+function Cache.preload()
+	pcall(K.probeSupport)
 	local roots = topLevel()
 	local total = 0
 	for _, r in ipairs(roots) do
@@ -1105,17 +1096,8 @@ function Cache.preload(progress)
 	total = math.max(total, 1)
 	local done = 0
 	for _, r in ipairs(roots) do
-		local base = done
-		local n = Cache.indexTree(r, function(i)
-			local d = base + i
-			progress(0.05 + 0.75 * math.min(1, d / total),
-				string.format("Indexing %s  (%d / %d)", r.Name, d, total))
-			wait()
-		end)
-		done += n
-		progress(0.05 + 0.75 * math.min(1, done / total), string.format("Indexed %s", r.Name))
+		done += Cache.indexTree(r, function() wait() end)
 	end
-	progress(0.82, "Building hierarchy...")
 	for i, r in ipairs(roots) do
 		local kids = Cache.getChildren(r)
 		if r == workspace then
@@ -1126,7 +1108,6 @@ function Cache.preload(progress)
 		end
 		if i % 4 == 0 then wait() end
 	end
-	progress(0.9, "Checking insertable classes...")
 	local n = 0
 	for _, cat in ipairs(K.INSERT_CATALOG) do
 		for _, cls in ipairs(cat[2]) do
@@ -1135,7 +1116,6 @@ function Cache.preload(progress)
 			if n % 25 == 0 then wait() end
 		end
 	end
-	progress(0.96, "Loading icons...")
 	if StudioIcons.enabled then
 		for _, r in ipairs(roots) do pcall(function() StudioIcons.request(studioNameFor(r)) end) end
 		for _, name in pairs(StudioIcons.byClass) do StudioIcons.request(name) end
@@ -1150,18 +1130,9 @@ function Cache.preload(progress)
 		doneIcons = true
 	end)
 	local t0 = os.clock()
-	local startBusy = math.max(1, StudioIcons.busy())
 	while (not doneIcons or StudioIcons.busy() > 0) and os.clock() - t0 < 12 do
-		local left = StudioIcons.busy()
-		progress(0.96 + 0.04 * (1 - left / startBusy), "Loading icons...")
 		wait()
 	end
-	local MIN_LOAD = 3
-	while os.clock() - startedAt < MIN_LOAD do
-		progress(0.995, "Finishing up...")
-		wait(0.05)
-	end
-	progress(1, string.format("Ready - %d instances indexed", #Cache.all))
 end
 
 local function rebuildFlat()
@@ -4562,6 +4533,8 @@ local function closePane(pane)
 	local w = ownerOf(pane)
 	if not w or pane.closing then return end
 	hideMenu(); hidePicker()
+	if pane.tween then pane.tween:Cancel(); pane.tween = nil end
+	if pane.sibTween then pane.sibTween:Cancel(); pane.sibTween = nil end
 	local rest = {}
 	for _, p in ipairs(w.panes) do if p ~= pane then rest[#rest + 1] = p end end
 	pane.closing = true
@@ -4592,11 +4565,14 @@ local function closePane(pane)
 		t = slideTween(pane.frame, isTop and { Size = UDim2.new(1, 0, 0, 0) }
 			or { Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 0) })
 		rest[1].frame.Visible = true
-		slideTween(rest[1].frame, { Position = UDim2.new(), Size = UDim2.fromScale(1, 1) }):Play()
+		pane.sibTween = slideTween(rest[1].frame, { Position = UDim2.new(), Size = UDim2.fromScale(1, 1) })
+		pane.sibTween:Play()
 	end
 	pane.tween = t
 	t.Completed:Connect(function(state)
 		if w.tween == t then w.tween = nil end
+		if pane.tween ~= t then return end
+		pane.sibTween = nil
 		if state == Enum.PlaybackState.Completed then finish() else pane.closing = nil end
 	end)
 	t:Play()
@@ -4605,6 +4581,7 @@ end
 local function openPane(pane)
 	UI.gui.Enabled = true
 	if pane.tween then pane.tween:Cancel(); pane.tween = nil end
+	if pane.sibTween then pane.sibTween:Cancel(); pane.sibTween = nil end
 	pane.closing = nil
 	local w = ownerOf(pane)
 	if w and not w.closed then
@@ -4662,10 +4639,15 @@ local function openPane(pane)
 		other.Position, other.Size = UDim2.new(), UDim2.fromScale(1, 1)
 		if host.panes[1] == pane then f.Position, f.Size = UDim2.new(), UDim2.new(1, 0, 0, 0)
 		else f.Position, f.Size = UDim2.new(0, 0, 1, 0), UDim2.new(1, 0, 0, 0) end
-		slideTween(other, { Position = op, Size = os_ }):Play()
+		pane.sibTween = slideTween(other, { Position = op, Size = os_ })
+		pane.sibTween:Play()
 		local t = slideTween(f, { Position = gp, Size = gs })
 		pane.tween = t
-		t.Completed:Connect(function() pane.tween = nil; layoutWindow(host) end)
+		t.Completed:Connect(function(state)
+			if pane.tween ~= t then return end
+			pane.tween, pane.sibTween = nil, nil
+			if state == Enum.PlaybackState.Completed then layoutWindow(host) end
+		end)
 		t:Play()
 	end
 	markDirty(); renderTree()
@@ -6301,62 +6283,7 @@ do
 	end
 end
 
--- Sprite sheets / GIF support. Load from url (cached with writefile), file path, or asset id,
--- then play frames through ImageRectOffset.
-K.Sprite = {}
-function K.Sprite.load(src, file)
-	if type(src) ~= "string" or src == "" then return nil end
-	if src:match("^rbxasset") then return src end
-	if src:match("^%d+$") then return "rbxassetid://" .. src end
-	local path = file
-	if src:match("^https?://") then
-		path = path or ("LX/sprites/" .. src:gsub("^https?://", ""):gsub("[^%w%.%-]", "_"):sub(-80))
-		if not path:match("%.%w+$") then path = path .. ".png" end
-		local have = false
-		pcall(function() have = isfile(path) end)
-		if not have then
-			local ok, body = pcall(function() return game:HttpGet(src) end)
-			if not ok or type(body) ~= "string" or #body == 0 then return nil end
-			pcall(function()
-				if not isfolder("LX") then makefolder("LX") end
-				if not isfolder("LX/sprites") then makefolder("LX/sprites") end
-			end)
-			if not pcall(writefile, path, body) then return nil end
-		end
-	else
-		path = src
-	end
-	local ok, id = pcall(getcustomasset, path)
-	return ok and type(id) == "string" and id or nil
-end
--- opt = { Image = url/path/id, FrameSize = Vector2, Columns = n, Frames = n, FPS = n, Loop = bool }
-function K.Sprite.play(img, opt)
-	local id = K.Sprite.load(opt.Image, opt.File)
-	if not id then return function() end end
-	local fs = opt.FrameSize or Vector2.new(64, 64)
-	local cols = math.max(1, opt.Columns or 1)
-	local frames = math.max(1, opt.Frames or cols)
-	local fps = opt.FPS or 20
-	img.Image = id
-	img.ImageRectSize = fs
-	img.ImageRectOffset = Vector2.zero
-	local RS = game:GetService("RunService")
-	local t, last, conn = 0, -1, nil
-	conn = RS.Heartbeat:Connect(function(dt)
-		if not img.Parent then conn:Disconnect() return end
-		t += dt
-		local f = math.floor(t * fps)
-		if opt.Loop == false then f = math.min(f, frames - 1) else f %= frames end
-		if f ~= last then
-			last = f
-			img.ImageRectOffset = Vector2.new((f % cols) * fs.X, math.floor(f / cols) * fs.Y)
-		end
-	end)
-	return function() if conn then conn:Disconnect() end end
-end
-
 do
-	local RS = game:GetService("RunService")
 	local FAMILY = "rbxasset://fonts/families/SourceSansPro.json"
 	local function nFont(w) return Font.new(FAMILY, w, Enum.FontStyle.Normal) end
 	UI.introPaint = {}
@@ -6368,14 +6295,6 @@ do
 		for _, p in ipairs(UI.introPaint) do
 			local c = type(p[3]) == "function" and p[3](T) or T[p[3]]
 			if typeof(c) == "Color3" and p[1] then pcall(function() p[1][p[2]] = c end) end
-		end
-		if UI.barGrad and UI.barGrad.Parent then
-			local a = T.Accent
-			UI.barGrad.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, a),
-				ColorSequenceKeypoint.new(0.5, a:Lerp(Color3.new(1, 1, 1), 0.35)),
-				ColorSequenceKeypoint.new(1, a),
-			})
 		end
 	end
 
@@ -6401,50 +6320,6 @@ do
 		paint(l, "TextColor3", key or "Text")
 		return l
 	end
-
-	local sprite = Configuration.IntroSprite
-	local tx = sprite and 58 or 20
-	UI.intro = card("intro", 340, 112)
-	if sprite then
-		local img = new("ImageLabel", {
-			BackgroundTransparency = 1, Position = UDim2.fromOffset(18, 12), Size = UDim2.fromOffset(32, 32),
-			ScaleType = Enum.ScaleType.Fit,
-		}, UI.intro)
-		task.spawn(function() pcall(K.Sprite.play, img, sprite) end)
-	end
-	label(UI.intro, "LX · " .. K.Edition, Enum.FontWeight.Bold, UDim2.fromOffset(tx, 16), UDim2.new(1, -tx - 20, 0, 26), 24, "TabText")
-
-	UI.introStatus = label(UI.intro, "Starting...", Enum.FontWeight.Regular,
-		UDim2.fromOffset(20, 52), UDim2.new(1, -90, 0, 20), 15, "Dim")
-	UI.introStatus.TextWrapped = false
-	UI.introStatus.TextTruncate = Enum.TextTruncate.AtEnd
-	UI.introPct = label(UI.intro, "0%", Enum.FontWeight.SemiBold,
-		UDim2.new(1, -80, 0, 52), UDim2.fromOffset(60, 20), 15, "Text", Enum.TextXAlignment.Right)
-
-	UI.barBg = paint(new("Frame", {
-		Position = UDim2.fromOffset(20, 80), Size = UDim2.new(1, -40, 0, 8),
-		BorderSizePixel = 0, ClipsDescendants = true,
-	}, UI.intro), "BackgroundColor3", "Input")
-	new("UICorner", { CornerRadius = UDim.new(1, 0) }, UI.barBg)
-	UI.barFill = new("Frame", {
-		Size = UDim2.new(0, 0, 1, 0), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1),
-	}, UI.barBg)
-	new("UICorner", { CornerRadius = UDim.new(1, 0) }, UI.barFill)
-	UI.barGrad = new("UIGradient", {}, UI.barFill)
-
-	-- progress bar: eased fill + moving gradient shine, stepped per frame (no tweens)
-	K.introTarget = 0
-	task.spawn(function()
-		local cur, shine = 0, -1
-		while UI.barFill.Parent do
-			local dt = RS.Heartbeat:Wait()
-			cur += (K.introTarget - cur) * math.min(dt * 10, 1)
-			UI.barFill.Size = UDim2.new(cur, 0, 1, 0)
-			shine += dt * 1.2
-			if shine > 1 then shine = -1 end
-			UI.barGrad.Offset = Vector2.new(shine, 0)
-		end
-	end)
 
 	UI.lowFps = card("lowfps", 340, 176)
 	label(UI.lowFps, "Low FPS detected", Enum.FontWeight.Bold, UDim2.fromOffset(20, 16), UDim2.new(1, -40, 0, 26), 22, "TabText")
@@ -6488,13 +6363,6 @@ function K.hideCard(c)
 		if sc then sc.Scale = 0.97 + 0.03 * e end
 	end)
 	c:Destroy()
-end
-
-function K.setProgress(a, text)
-	a = math.clamp(a, 0, 1)
-	K.introTarget = a
-	UI.introPct.Text = string.format("%d%%", math.floor(a * 100 + 0.5))
-	if text then UI.introStatus.Text = text end
 end
 
 function K.askLowPerformance()
@@ -6554,15 +6422,8 @@ task.spawn(function()
 	local waitedAt = os.clock()
 	while not K.themeReady and os.clock() - waitedAt < 3 do wait() end
 	pcall(K.paintIntro)
-	task.spawn(K.showCard, UI.intro)
-	local ok, err = pcall(Cache.preload, K.setProgress)
-	if not ok then
-		K.setProgress(1, "Ready (partial index)")
-	end
+	pcall(Cache.preload)
 	Cache.ready = true
-	K.setProgress(1, "Done")
-	wait(0.45)
-	K.hideCard(UI.intro)
 
 	if K.lowFpsDetected and not Options.ForceLowEnd then
 		pcall(K.askLowPerformance)
@@ -6616,8 +6477,7 @@ local function bootApps()
 		return t
 	end
 
-	local Themes = { order = { "Next Generation Studio", "2021 Studio" }, list = {} }
-	Themes.list["Next Generation Studio"] = cloneTheme(Configuration.Theme)
+	local Themes = { order = { "2021 Studio" }, list = {} }
 	Themes.list["2021 Studio"] = derive(Configuration.Theme, {
 		Main = rgb(46, 46, 46), Surface = rgb(37, 37, 37), Header = rgb(53, 53, 53), Input = rgb(31, 31, 31),
 		Panel = rgb(60, 60, 60), Border = rgb(34, 34, 34), Text = rgb(204, 204, 204), Dim = rgb(130, 130, 130),
@@ -6677,22 +6537,8 @@ local function bootApps()
 		return out
 	end
 	local PRESETS = {
-		{ "Dracula", { bg = "282a36", fg = "f8f8f2", accent = "bd93f9", keyword = "ff79c6", string = "f1fa8c", comment = "6272a4", number = "bd93f9", builtin = "8be9fd", fn = "50fa7b", property = "ffb86c" } },
-		{ "Monokai", { bg = "272822", fg = "f8f8f2", accent = "a6e22e", accentText = "1e1f1c", keyword = "f92672", string = "e6db74", comment = "75715e", number = "ae81ff", builtin = "66d9ef", fn = "a6e22e", property = "fd971f" } },
-		{ "One Dark", { bg = "282c34", fg = "abb2bf", accent = "61afef", keyword = "c678dd", string = "98c379", comment = "5c6370", number = "d19a66", builtin = "56b6c2", fn = "61afef", property = "e06c75" } },
-		{ "Nord", { bg = "2e3440", fg = "d8dee9", accent = "88c0d0", accentText = "2e3440", keyword = "81a1c1", string = "a3be8c", comment = "616e88", number = "b48ead", builtin = "8fbcbb", fn = "88c0d0", property = "d08770" } },
-		{ "Tokyo Night", { bg = "1a1b26", fg = "c0caf5", accent = "7aa2f7", keyword = "bb9af7", string = "9ece6a", comment = "565f89", number = "ff9e64", builtin = "7dcfff", fn = "7aa2f7", property = "73daca" } },
-		{ "Catppuccin Mocha", { bg = "1e1e2e", fg = "cdd6f4", accent = "cba6f7", accentText = "1e1e2e", keyword = "cba6f7", string = "a6e3a1", comment = "6c7086", number = "fab387", builtin = "89dceb", fn = "89b4fa", property = "f38ba8" } },
-		{ "Gruvbox Dark", { bg = "282828", fg = "ebdbb2", accent = "fe8019", keyword = "fb4934", string = "b8bb26", comment = "928374", number = "d3869b", builtin = "83a598", fn = "fabd2f", property = "8ec07c" } },
-		{ "Solarized Dark", { bg = "002b36", fg = "93a1a1", accent = "268bd2", keyword = "859900", string = "2aa198", comment = "586e75", number = "d33682", builtin = "b58900", fn = "268bd2", property = "cb4b16" } },
 		{ "GitHub Dark", { bg = "0d1117", fg = "c9d1d9", accent = "2f81f7", panel = "21262d", border = "30363d", keyword = "ff7b72", string = "a5d6ff", comment = "8b949e", number = "79c0ff", builtin = "ffa657", fn = "d2a8ff", property = "7ee787" } },
-		{ "Rose Pine", { bg = "191724", fg = "e0def4", accent = "ebbcba", accentText = "191724", keyword = "31748f", string = "f6c177", comment = "6e6a86", number = "ebbcba", builtin = "9ccfd8", fn = "c4a7e7", property = "eb6f92" } },
 		{ "Everforest", { bg = "2d353b", fg = "d3c6aa", accent = "a7c080", accentText = "2d353b", keyword = "e67e80", string = "a7c080", comment = "859289", number = "d699b6", builtin = "7fbbb3", fn = "dbbc7f", property = "83c092" } },
-		{ "Synthwave", { bg = "262335", fg = "f0eff1", accent = "ff7edb", accentText = "262335", keyword = "fede5d", string = "ff8b39", comment = "848bbd", number = "f97e72", builtin = "36f9f6", fn = "72f1b8", property = "ff7edb" } },
-		{ "Midnight", { bg = "121826", fg = "d6deeb", accent = "3b82f6", keyword = "c792ea", string = "addb67", comment = "637777", number = "f78c6c", builtin = "7fdbca", fn = "82aaff", property = "ffcb8b" } },
-		{ "AMOLED", { bg = "080808", fg = "e6e6e6", accent = "00b4ff", surface = "030303", input = "010101", border = "1c1c1c", panel = "1f1f1f", keyword = "ff5f87", string = "afff87", comment = "6c6c6c", number = "ffd75f", builtin = "5fd7ff", fn = "ffff87", property = "87afff" } },
-		{ "Studio Light", { light = true, bg = "f5f5f5", fg = "1b1b1b", accent = "0078d7", surface = "ffffff", input = "fefefe", header = "e9e9e9", panel = "dcdcdc", border = "c8c8c8", dim = "6e6e6e", keyword = "0000ff", string = "a31515", comment = "008000", number = "098658", builtin = "267f99", fn = "795e26", property = "001080" } },
-		{ "Solarized Light", { light = true, bg = "fdf6e3", fg = "586e75", accent = "268bd2", surface = "fffbef", input = "fffdf6", panel = "eee8d5", border = "d9d2bf", keyword = "859900", string = "2aa198", comment = "93a1a1", number = "d33682", builtin = "b58900", fn = "268bd2", property = "cb4b16" } },
 	}
 	for _, p in ipairs(PRESETS) do
 		local ok, th = pcall(preset, p[2])
@@ -6704,7 +6550,7 @@ local function bootApps()
 
 	local Settings = {
 		folder = "LX", file = "LX/settings.json", themeFolder = "LX/themes",
-		data = { theme = "Next Generation Studio", image = "", imageTransparency = 0.6, panelTransparency = 0.25 },
+		data = { theme = "2021 Studio", image = "", imageTransparency = 0.6, panelTransparency = 0.25 },
 	}
 
 	local function encodeTheme(theme)
@@ -6719,7 +6565,7 @@ local function bootApps()
 
 	local function decodeTheme(raw)
 		if type(raw) ~= "table" then return nil end
-		local theme = cloneTheme(Themes.list["Next Generation Studio"])
+		local theme = cloneTheme(Themes.list["2021 Studio"])
 		local hits = 0
 		for k, v in pairs(raw) do
 			if theme[k] ~= nil then
@@ -6864,7 +6710,7 @@ local function bootApps()
 		for k, v in pairs(theme) do Configuration.Theme[k] = v end
 		Settings.data.theme = name
 		if K.paintIntro then pcall(K.paintIntro) end
-		K.classicTitles = name ~= "Next Generation Studio"
+		K.classicTitles = true
 		K.styleTitles()
 		pcall(refreshSelectionBoxes)
 		pcall(repaintRows)
@@ -7417,14 +7263,14 @@ local function bootApps()
 
 	Apps.list = {
 		{ name = "Explorer", icon = "Workspace", fallback = "Workspace",
-			url = "https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/studio-svg-textures/Shared/Ribbon/Dark/Medium/RibbonExplorer@2x.png",
-			cache = "LX/ui/explorer_48.png", open = function() togglePane(Panes.explorer) end },
+			url = "https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/studio-svg-textures/Shared/Ribbon/Dark/Medium/RibbonExplorer@3x.png",
+			cache = "LX/ui/explorer_72.png", open = function() togglePane(Panes.explorer) end },
 		{ name = "Properties", icon = "Property", fallback = "Configuration",
-			url = "https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/studio-svg-textures/Shared/Ribbon/Dark/Medium/RibbonProperties@2x.png",
-			cache = "LX/ui/properties_48.png", open = function() togglePane(Panes.props) end },
+			url = "https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/studio-svg-textures/Shared/Ribbon/Dark/Medium/RibbonProperties@3x.png",
+			cache = "LX/ui/properties_72.png", open = function() togglePane(Panes.props) end },
 		{ name = "3D Viewer", icon = "ViewportFrame", fallback = "Model",
-			url = "https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/studio-svg-textures/Shared/Ribbon/Dark/Medium/RibbonViewportFrame@2x.png",
-			cache = "LX/ui/viewer3d_48.png", open = function()
+			url = "https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/studio-svg-textures/Shared/Ribbon/Dark/Medium/RibbonViewportFrame@3x.png",
+			cache = "LX/ui/viewer3d_72.png", open = function()
 			local sel = State.selected
 			if sel and K.viewable(sel) then Delve.open3DViewer(sel) return end
 			if not UI.view3DWin then UI.view3DWin = buildViewerWindow(); applyBackdrop() end
@@ -7677,12 +7523,8 @@ local function bootApps()
 
 	Settings.load()
 	K.applyPerformance()
-	if Settings.data.theme == "Grey" then Settings.data.theme = "2021 Studio" end
-	if Settings.data.theme == "Light" then Settings.data.theme = "Next Generation Studio" end
-	if Settings.data.theme == "Roblox Studio" then Settings.data.theme = "Next Generation Studio" end
-	if Settings.data.theme ~= "Next Generation Studio" and Themes.list[Settings.data.theme] then
-		applyTheme(Settings.data.theme)
-	end
+	if not Themes.list[Settings.data.theme] then Settings.data.theme = "2021 Studio" end
+	applyTheme(Settings.data.theme)
 	K.themeReady = true
 	applyBackdrop()
 	Delve.Settings = Settings
