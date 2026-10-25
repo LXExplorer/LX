@@ -731,7 +731,6 @@ local function filterBox(parent, y, placeholder, opts)
 		Size = UDim2.new(1, -(8 + right), 0, 22), Position = UDim2.fromOffset(8, 3),
 		BackgroundColor3 = opts.boxed and T.Surface or T.Input, BorderSizePixel = 0,
 	}, holder)
-	new("UICorner", { CornerRadius = UDim.new(0, 4) }, field)
 	local fieldStroke = stroke(field, opts.boxed and T.Input or T.Input, 1)
 	fieldStroke.Transparency = opts.boxed and 0 or 1
 	local iconW = (opts.history or opts.dropdown) and 22 or 0
@@ -3257,10 +3256,9 @@ UI.picker = new("Frame", {
 	BorderSizePixel = 0, Visible = false, ZIndex = 60, Active = true,
 }, UI.gui)
 stroke(UI.picker)
-new("UICorner", { CornerRadius = UDim.new(0, 6) }, UI.picker)
 new("TextLabel", {
 	BackgroundTransparency = 1, Size = UDim2.new(1, -32, 0, 24), Position = UDim2.fromOffset(8, 0),
-	Font = Enum.Font.SourceSansBold, TextSize = 14, TextColor3 = Configuration.Theme.Text, Text = "Insert Object",
+	FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Light), TextSize = 14, TextColor3 = Configuration.Theme.Text, Text = "Insert Object",
 	TextXAlignment = Enum.TextXAlignment.Left,
 }, UI.picker)
 UI.pickerClose = windowButton(UI.picker, "close", UDim2.fromOffset(28, 22))
@@ -3328,7 +3326,7 @@ local function fillPicker()
 	local function header(text)
 		order += 1
 		local l = new("TextLabel", {
-			Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Font = Enum.Font.SourceSansBold, TextSize = 14,
+			Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Font = Enum.Font.SourceSans, TextSize = 14,
 			TextColor3 = Configuration.Theme.Dim, Text = text, TextXAlignment = Enum.TextXAlignment.Left,
 			LayoutOrder = order,
 		}, UI.pickerList)
@@ -3448,7 +3446,6 @@ UI.menu = new("Frame", {
 	Visible = false, ZIndex = 50, Size = UDim2.fromOffset(UI.menuW, 0), Active = true,
 }, UI.gui)
 stroke(UI.menu)
-new("UICorner", { CornerRadius = UDim.new(0, 6) }, UI.menu)
 new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, UI.menu)
 new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) }, UI.menu)
 UI.itemH = touchH(Services.UserInputService.TouchEnabled and 30 or 22)
@@ -3912,7 +3909,6 @@ local function createWindow(name, isTool)
 		Visible = false, BackgroundColor3 = Configuration.Theme.Surface, BorderSizePixel = 0, Active = true, ZIndex = 1,
 	}, UI.gui)
 	stroke(frame)
-	if isTool then new("UICorner", { CornerRadius = UDim.new(0, 6) }, frame) end
 	local w = {
 		name = name, frame = frame, panes = {}, mode = "stack", active = nil,
 		ratio = 0.55, lastRatio = 0.55, snapped = nil, snapWidth = nil, bottomH = nil,
@@ -5165,6 +5161,7 @@ end
 function K.window(name, title, font)
 	local win = createWindow(name, true)
 	win.pane = newPane(name, title or name, font or Enum.Font.SourceSans)
+	if win.pane.label then win.pane.label.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Light) end
 	win.body = win.pane.body
 	win.frame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 	do
@@ -5173,51 +5170,6 @@ function K.window(name, title, font)
 		header.ZIndex = 2
 		win.body.Position = UDim2.fromOffset(0, K.TITLE_H)
 		win.body.Size = UDim2.new(1, 0, 1, -K.TITLE_H)
-		local headerCorner = new("UICorner", { CornerRadius = UDim.new(0, 6) }, header)
-		local cornerFill = new("Frame", {
-			Name = "cornerfill", BackgroundColor3 = header.BackgroundColor3, BorderSizePixel = 0,
-			Size = UDim2.new(1, 0, 0, 8), Position = UDim2.new(0, 0, 1, -8), ZIndex = 0, Active = false,
-		}, header)
-		if K.setCorners(headerCorner, 6, 6, 0, 0) then cornerFill.Visible = false end
-		local R = 6
-		local function roundChild(c)
-			if not c:IsA("GuiObject") or c:FindFirstChildOfClass("UICorner") then return end
-			local corner = new("UICorner", { CornerRadius = UDim.new(0, 0) }, c)
-			local fill
-			local function update()
-				if not c.Parent then return end
-				local body = win.body
-				local bp, bs = body.AbsolutePosition, body.AbsoluteSize
-				local cp, cs = c.AbsolutePosition, c.AbsoluteSize
-				local bottom = cp.Y + cs.Y >= bp.Y + bs.Y - 1
-				local left = bottom and cp.X <= bp.X + 1
-				local right = bottom and cp.X + cs.X >= bp.X + bs.X - 1
-				if K.setCorners(corner, 0, 0, left and R or 0, right and R or 0) then
-					if fill then fill.Visible = false end
-					return
-				end
-				corner.CornerRadius = UDim.new(0, (left and right) and R or 0)
-				if left and right and c.BackgroundTransparency < 1 then
-					if not fill then
-						fill = new("Frame", {
-							Name = "topflat", BackgroundColor3 = c.BackgroundColor3, BackgroundTransparency = c.BackgroundTransparency,
-							BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, R + 1), ZIndex = c.ZIndex, Active = false,
-						}, c)
-						c:GetPropertyChangedSignal("BackgroundColor3"):Connect(function() fill.BackgroundColor3 = c.BackgroundColor3 end)
-						c:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function() fill.BackgroundTransparency = c.BackgroundTransparency end)
-					end
-					fill.Visible = true
-				elseif fill then
-					fill.Visible = false
-				end
-			end
-			update()
-			c:GetPropertyChangedSignal("AbsoluteSize"):Connect(update)
-			c:GetPropertyChangedSignal("AbsolutePosition"):Connect(update)
-			win.body:GetPropertyChangedSignal("AbsoluteSize"):Connect(update)
-		end
-		for _, c in ipairs(win.body:GetChildren()) do roundChild(c) end
-		win.body.ChildAdded:Connect(roundChild)
 	end
 	setPanes(win, { win.pane }, "stack")
 	function win.show(offset)
@@ -6168,7 +6120,6 @@ do
 		Name = "exopts", Visible = false, ZIndex = 55, Active = true,
 		BackgroundColor3 = T.Header, BorderSizePixel = 0, Size = UDim2.fromOffset(290, 8 + 3 * touchH(28)),
 	}, UI.gui)
-	new("UICorner", { CornerRadius = UDim.new(0, 6) }, UI.options)
 	stroke(UI.options)
 
 	local function optionRow(index, text, get, set)
@@ -6281,7 +6232,6 @@ do
 		Name = "loading", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(400, 300), BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(255, 255, 255), Visible = false,
 	}, UI.introGui)
-	new("UICorner", { CornerRadius = UDim.new(0, 8) }, UI.loading)
 	UI.loadingStroke = new("UIStroke", { Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, UI.loading)
 	new("UIGradient", { Rotation = 40, Color = ColorSequence.new(Color3.new(1, 1, 1)) }, UI.loading)
 	UI.loadingAccent = new("Frame", {
@@ -6316,11 +6266,9 @@ do
 		Position = UDim2.fromOffset(20, 264), Size = UDim2.fromOffset(360, 8),
 		BorderSizePixel = 0, ClipsDescendants = true,
 	}, UI.loading)
-	new("UICorner", { CornerRadius = UDim.new(1, 0) }, UI.loadingTrack)
 	UI.loadingFill = new("Frame", {
 		Size = UDim2.fromScale(0, 1), BorderSizePixel = 0,
 	}, UI.loadingTrack)
-	new("UICorner", { CornerRadius = UDim.new(1, 0) }, UI.loadingFill)
 	K.introStages = {
 		{ 0.05, "Checking executor" }, { 0.6, "Indexing game" }, { 0.7, "Caching instances" },
 		{ 0.8, "Checking classes" }, { 0.95, "Loading icons" }, { 2, "Finishing up" },
@@ -6418,7 +6366,6 @@ do
 			Size = UDim2.fromOffset(w, h), BorderSizePixel = 0, GroupTransparency = 0, Visible = false,
 		}, UI.introGui)
 		paint(c, "BackgroundColor3", "Main")
-		new("UICorner", { CornerRadius = UDim.new(0, 6) }, c)
 		paint(new("UIStroke", { Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, c), "Color", "Border")
 		new("UIScale", { Scale = 1 }, c)
 		new("UIGradient", { Name = "fold", Rotation = 90, Transparency = NumberSequence.new(1) }, c)
@@ -6447,7 +6394,7 @@ do
 	paint(UI.loadingFill, "BackgroundColor3", "Accent")
 
 	UI.lowFps = card("lowfps", 340, 176)
-	label(UI.lowFps, "Low FPS detected", Enum.FontWeight.Bold, UDim2.fromOffset(20, 16), UDim2.new(1, -40, 0, 26), 22, "TabText")
+	label(UI.lowFps, "Low FPS detected", Enum.FontWeight.Light, UDim2.fromOffset(20, 16), UDim2.new(1, -40, 0, 26), 22, "TabText")
 	label(UI.lowFps, "Enable Low Performance Mode?",
 		Enum.FontWeight.Regular, UDim2.fromOffset(20, 52), UDim2.new(1, -40, 0, 40), 16, "Text")
 	local function btn(text, x, primary)
@@ -6994,7 +6941,6 @@ local function bootApps()
 			Position = UDim2.new(0, 0, 0.5, -7), Size = UDim2.fromOffset(3, 14), BackgroundColor3 = T.Accent,
 			BorderSizePixel = 0, ZIndex = 4,
 		}, b)
-		new("UICorner", { CornerRadius = UDim.new(1, 0) }, bar)
 		local lbl = new("TextLabel", {
 			BackgroundTransparency = 1, Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -100, 1, 0),
 			Font = Enum.Font.SourceSans, TextSize = 15, TextColor3 = T.Text, Text = name,
@@ -7010,7 +6956,6 @@ local function bootApps()
 		local chips = {}
 		for n in ipairs(KEYS) do
 			local c = new("Frame", { Size = UDim2.fromOffset(12, 14), BorderSizePixel = 0, LayoutOrder = n, ZIndex = 5 }, sw)
-			new("UICorner", { CornerRadius = UDim.new(0, 3) }, c)
 			chips[n] = c
 		end
 		local function paint()
@@ -7033,7 +6978,7 @@ local function bootApps()
 	local function sectionTitle(parent, order, text)
 		return new("TextLabel", {
 			BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 28), LayoutOrder = order, ZIndex = 3,
-			Font = Enum.Font.SourceSansBold, TextSize = 15, TextColor3 = Configuration.Theme.TabText, Text = text,
+			FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Light), TextSize = 15, TextColor3 = Configuration.Theme.TabText, Text = text,
 			TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Bottom,
 		}, parent)
 	end
@@ -7044,7 +6989,6 @@ local function bootApps()
 			Size = UDim2.new(1, 0, 0, height or touchH(26)), BackgroundColor3 = T.Input, BorderSizePixel = 0,
 			LayoutOrder = order, ZIndex = 3,
 		}, parent)
-		new("UICorner", { CornerRadius = UDim.new(0, 4) }, holder)
 		local st = stroke(holder, T.Border, 1)
 		local box = new("TextBox", {
 			BackgroundTransparency = 1, Position = UDim2.fromOffset(8, 4), Size = UDim2.new(1, -16, 1, -8),
@@ -7187,7 +7131,7 @@ local function bootApps()
 		local status = new("TextLabel", {
 			BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 18), LayoutOrder = 0, ZIndex = 3,
 			Font = Enum.Font.SourceSans, TextSize = 13, TextColor3 = Configuration.Theme.Dim, Text = "",
-			TextXAlignment = Enum.TextXAlignment.Left,
+			TextXAlignment = Enum.TextXAlignment.Left, Visible = false,
 		}, scroll)
 		local actions = buttonRow(scroll, nextOrder())
 		status.LayoutOrder = nextOrder()
@@ -7341,7 +7285,7 @@ local function bootApps()
 		end)
 		new("TextLabel", {
 			BackgroundTransparency = 1, Position = UDim2.fromOffset(58, 13), Size = UDim2.new(1, -58, 0, 22),
-			Font = Enum.Font.SourceSansBold, TextSize = 18, TextColor3 = Configuration.Theme.TabText,
+			FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Light), TextSize = 18, TextColor3 = Configuration.Theme.TabText,
 			Text = "Fishilizer", TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4,
 		}, head)
 
@@ -7398,7 +7342,7 @@ local function bootApps()
 		local status = new("TextLabel", {
 			BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 36), LayoutOrder = nextOrder(), ZIndex = 3,
 			Font = Enum.Font.SourceSans, TextSize = 13, TextColor3 = Configuration.Theme.Dim, TextWrapped = true,
-			Text = "",
+			Text = "", Visible = false,
 			TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
 		}, scroll)
 
@@ -7534,7 +7478,7 @@ local function bootApps()
 	do
 		-- App dock: a vertical strip of stacked app icons attached to the side of the Explorer window.
 		local T = Configuration.Theme
-		local G = { BTN = Delve_IsMobile and 38 or 30, ICON = 24, PAD = 3, GAP = 3, OFF = 0, ARROW = 18, CW = 16, collapsed = false }
+		local G = { BTN = Delve_IsMobile and 38 or 30, ICON = 24, PAD = 3, GAP = 3, OFF = 0, ARROW = 24, CW = 22, collapsed = true }
 		G.W = G.BTN + G.PAD * 2
 
 		local dock = new("Frame", {
@@ -7544,17 +7488,14 @@ local function bootApps()
 		UI.appMenu = dock
 		UI.launcher = dock
 		watchHover(dock)
-		G.corner = new("UICorner", { CornerRadius = UDim.new(0, 4) }, dock)
 		stroke(dock)
 
 		G.toggle = uiImage({
 			ClassName = "ImageButton", Name = "toggle", AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -1), Size = UDim2.fromOffset(16, 16), ZIndex = 10066,
+			Position = UDim2.new(0.5, 0, 1, -1), Size = UDim2.fromOffset(22, 22), ZIndex = 10066,
 			AutoButtonColor = false,
-		}, dock, "chevron_right", T.Dim)
-		G.toggle.MouseEnter:Connect(function() G.toggle.ImageColor3 = Configuration.Theme.TabText end)
-		G.toggle.MouseLeave:Connect(function() G.toggle.ImageColor3 = Configuration.Theme.Dim end)
-		G.toggle.Activated:Connect(function() G.collapsed = not G.collapsed end)
+		}, dock, "chevron_right", Color3.new(1, 1, 1))
+						G.toggle.Activated:Connect(function() G.collapsed = not G.collapsed end)
 
 		G.grid = new("ScrollingFrame", {
 			Name = "grid", Position = UDim2.fromOffset(G.PAD, G.PAD), Size = UDim2.new(1, -G.PAD * 2, 1, -G.PAD * 2 - G.ARROW),
@@ -7575,7 +7516,6 @@ local function bootApps()
 			BackgroundColor3 = T.Panel, BorderSizePixel = 0, Font = Enum.Font.SourceSans, TextSize = 14,
 			TextColor3 = T.TabText, Text = "", Visible = false, ZIndex = 10070,
 		}, UI.gui)
-		new("UICorner", { CornerRadius = UDim.new(0, 4) }, tip)
 		new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, tip)
 		stroke(tip)
 
@@ -7602,14 +7542,6 @@ local function bootApps()
 			G.toggle.Position = G.collapsed and UDim2.fromScale(0.5, 0.5) or UDim2.new(0.5, 0, 1, -1)
 			local pointRight = (side == "left") ~= G.collapsed
 			G.toggle.Rotation = pointRight and 0 or 180
-			local key = side .. tostring(G.collapsed)
-			if G.cornerKey ~= key then
-				G.cornerKey = key
-				-- flat on the side touching the Explorer so the dock reads as part of it
-				if side == "left" then K.setCorners(G.corner, 4, 0, 4, 0)
-				elseif side == "right" then K.setCorners(G.corner, 0, 4, 0, 4)
-				else K.setCorners(G.corner, 4, 4, 4, 4) end
-			end
 		end
 		game:GetService("RunService").Heartbeat:Connect(function()
 			if UI.gui.Enabled then pcall(place) end
@@ -8255,7 +8187,6 @@ do
 			BackgroundColor3 = Configuration.Theme.Input, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 0),
 			AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = order, ZIndex = 3,
 		}, parent)
-		new("UICorner", { CornerRadius = UDim.new(0, 4) }, f)
 		stroke(f, Configuration.Theme.Border, 1)
 		new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4) }, f)
 		new("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, f)
@@ -8417,7 +8348,7 @@ task.spawn(function()
 		local function build()
 			local win = Apps.window("tageditor", "Tag Editor")
 			local scroll, nextOrder = K.ui.page(win.pane.body)
-			local head = K.ui.text(scroll, nextOrder(), "Nothing selected", { bold = true, size = 15, height = 24 })
+			local head = K.ui.text(scroll, nextOrder(), "Nothing selected", { size = 15, height = 24 })
 
 			Apps.title(scroll, nextOrder(), "Tags")
 			local tagBox = K.ui.box(scroll, nextOrder())
@@ -8443,6 +8374,7 @@ task.spawn(function()
 			local rescan = Apps.button(allRow, "Rescan", 2)
 			local allBox = K.ui.box(scroll, nextOrder())
 			local status = K.ui.text(scroll, nextOrder(), "", { dim = true, wrap = true, size = 13 })
+			status.Visible = false
 
 			local lastSig = ""
 			local function signature(list)
@@ -8696,6 +8628,7 @@ task.spawn(function()
 		local reloadAll = Apps.button(bar, "Reload All", 1)
 		local listBox = K.ui.box(scroll, nextOrder())
 		local status = K.ui.text(scroll, nextOrder(), "", { dim = true, wrap = true, size = 13 })
+			status.Visible = false
 
 		local render
 		render = function()
