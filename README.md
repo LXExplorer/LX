@@ -17,45 +17,45 @@
   </p>
 </div>
 
-LX is a Roblox debugging suite inspired by Dex Explorer. It is built for poking around games, scripts, and instances without making everything feel like a chore.
+LX is a Roblox debugging tool made for looking around games, scripts, and instances without everything being a mess.
 
-The Discord server is where people hang out, test things out, report bugs, and share what they are working on.
+If you want to hang out, ask questions, or see what people are messing with, the Discord server is the place.
 
 > [!IMPORTANT]
 > LX is discontinued, but the bounty hunter is still going. If you find issues, report them in the Discord server and you might get a special badge.
 
 > [!WARNING]
-> This project is mainly for educational and debugging use. Some features depend on executor capabilities and may not work everywhere.
+> This is mainly for educational and debugging use. Some features depend on what your executor can do, so they may not work everywhere.
 
 <div align="center">
   <img src="preview.png" width="960" alt="LX preview" />
 </div>
 
-## what LX does
+## what it does
 
-LX gives you a small set of tools for inspecting and digging through live Roblox data.
+LX helps you inspect stuff in a Roblox game, like:
 
-- Script Viewer
-- 3D Viewer
-- Notepad
-- Hook
-- Game tree and instance browsing
-- Script and place dumping when your executor allows it
-- Remote, nil instance, attribute, tag, and bytecode export
+- script contents
+- instance tree
+- 3D viewer
+- notepad
+- hooks
+- dumping scripts and places when your executor supports it
+- exporting remotes, attributes, tags, and bytecode
 
-Some features only work when the executor exposes the APIs needed for them.
+You do not need to be a dev wizard to use it. If it loads and runs, you can start poking around.
 
-## quick start
+## how to load it
 
-Load the project loader:
+Copy this into your executor:
 
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/LXExplorer/LX/main/Loader.lua"))()
 ```
 
-This loads the library and opens the main explorer if it is not already running. It also exposes the library as `_G.LXLibrary`.
+That loads the library and opens the main explorer if it is not already running.
 
-To load the bundled example plugins:
+If you want to use the example plugins that come with the repo, do this:
 
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/LXExplorer/LX/main/Loader.lua"))()
@@ -64,11 +64,24 @@ Library.LoadPlugin("plugins/CopyPaths.lua")
 Library.LoadPlugin("plugins/PlaceInfo.lua")
 ```
 
-## docs
+## easy stuff to know
 
-### plugin API
+- The loader is just the thing that grabs the main explorer and gets it running.
+- The explorer is the real tool you use.
+- Plugins add extra tools and shortcuts.
+- Some features will only work if your executor exposes that capability.
 
-The plugin system is small and simple. A plugin file should return a function that receives the library.
+## built in plugins
+
+- Quick Search
+- Copy Paths
+- Place Info
+
+## if you want to make your own plugin
+
+The repo has a small plugin system. You can start from the example files in the repo and change them.
+
+Basic example:
 
 ```lua
 local Library = loadstring(readfile("lib/LX.lua"))()
@@ -76,48 +89,22 @@ local plugin = loadstring(readfile("examples/MyPlugin.lua"))()
 plugin(Library)
 ```
 
-Main API surface:
+The full notes are in [docs/Plugins.md](docs/Plugins.md).
 
-- `Library.Register(name, setup)`
-- `Library.AddApp({ name = "My App", icon = "Folder", open = function() end })`
-- `Library.AddMenu(callback)`
-- `Library.Search(text)`
-- `Library.Select(instance)`
-- `Library.Theme(name, colors)`
-- `Library.LoadPlugin("plugins/QuickSearch.lua")`
+## repo layout
 
-The loader is not a second explorer. It is just a thin way to pull and run the real script while giving plugins a library to work with.
-
-### plugin examples
-
-The repo already includes a few simple examples:
-
-- `plugins/QuickSearch.lua`
-- `plugins/CopyPaths.lua`
-- `plugins/PlaceInfo.lua`
-- `examples/MyPlugin.lua`
-- `examples/LoadPlugins.lua`
-
-### repo layout
-
-- [Loader.lua](Loader.lua) loads the public library and runs the main script when needed
-- [LX.lua](LX.lua) is the main explorer implementation
-- [lib/LX.lua](lib/LX.lua) is the library API for plugin development
+- [Loader.lua](Loader.lua) loads the main script
+- [LX.lua](LX.lua) is the main explorer
+- [lib/LX.lua](lib/LX.lua) is the library API
 - [plugins/](plugins) contains the bundled plugins
-- [examples/](examples) contains example loaders and plugin scripts
-- [docs/Plugins.md](docs/Plugins.md) has the deeper plugin authoring notes
-
-## included plugins
-
-- Quick Search
-- Copy Paths
-- Place Info
+- [examples/](examples) contains example scripts
+- [docs/Plugins.md](docs/Plugins.md) has the deeper plugin notes
 
 ## notes
 
-- This project is mainly for educational and debugging use.
-- Some features depend on executor capabilities and may not work in every environment.
-- There is not a full plugin unload API yet. If you need a clean slate, restart the session.
+- This project is mostly for learning and debugging.
+- Some features depend on executor support.
+- If you want a clean slate, restart the session.
 
 <div align="center">
   <img src="AllKnowing.gif" width="420" alt="LX For The All Knowing" />
@@ -127,7 +114,7 @@ The repo already includes a few simple examples:
 
 This is the private tester version of LX. It is for trusted users, contributors, and people with access to the stronger build.
 
-Included features:
+It includes:
 
 - Script editing
 - Datastore inspection and management
@@ -137,4 +124,4 @@ Included features:
 - Priority support
 - Regular updates to keep the project from rotting
 
-This is the more powerful version of LX, kept for the people trusted to keep it alive.
+This is the stronger version of LX for the people trusted to keep it alive.
