@@ -17,45 +17,36 @@
   </p>
 </div>
 
-LX is a Roblox debugging tool made for looking around games, scripts, and instances without everything being a mess.
+LX is a Roblox debugging tool made for exploring ROBLOX games to a high degree
 
-If you want to hang out, ask questions, or see what people are messing with, the Discord server is the place.
-
-> [!IMPORTANT]
-> LX is discontinued, but the bounty hunter is still going. If you find issues, report them in the Discord server and you might get a special badge.
+If you want to hang out, ask questions, or get help with LX then visit the Discord server 
 
 > [!WARNING]
-> This is mainly for educational and debugging use. Some features depend on what your executor can do, so they may not work everywhere.
+> This is mainly for educational and debugging use. Some features depend on what your executor can do, so they MAY not work everywhere!
 
 <div align="center">
   <img src="preview.png" width="960" alt="LX preview" />
 </div>
 
-## what it does
-
 LX helps you inspect stuff in a Roblox game, like:
 
-- script contents
+- Script contents
 - instance tree
 - 3D viewer
-- notepad
-- hooks
-- dumping scripts and places when your executor supports it
-- exporting remotes, attributes, tags, and bytecode
+- Notepad
+- Hooks
+- Dumping scripts and places when your executor supports it
+- Exporting remotes, attributes, tags, and bytecode (may be buggy as i am still in the process of rewriting it)
 
-You do not need to be a dev wizard to use it. If it loads and runs, you can start poking around.
 
-## how to load it
 
-Copy this into your executor:
+## Main Loader
 
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/LXExplorer/LX/main/Loader.lua"))()
 ```
 
-That loads the library and opens the main explorer if it is not already running.
-
-If you want to use the example plugins that come with the repo, do this:
+If you want to use the example plugins that come with the repo:
 
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/LXExplorer/LX/main/Loader.lua"))()
@@ -64,20 +55,13 @@ Library.LoadPlugin("plugins/CopyPaths.lua")
 Library.LoadPlugin("plugins/PlaceInfo.lua")
 ```
 
-## easy stuff to know
+## Info
 
-- The loader is just the thing that grabs the main explorer and gets it running.
-- The explorer is the real tool you use.
 - Plugins add extra tools and shortcuts.
-- Some features will only work if your executor exposes that capability.
+- Some features will only work if your executor exposes that capability as stated.
 
-## built in plugins
 
-- Quick Search
-- Copy Paths
-- Place Info
-
-## if you want to make your own plugin
+## For Plugin Devs
 
 The repo has a small plugin system. You can start from the example files in the repo and change them.
 
@@ -91,7 +75,7 @@ plugin(Library)
 
 The full notes are in [docs/Plugins.md](docs/Plugins.md).
 
-## repo layout
+## Hierarchy
 
 - [Loader.lua](Loader.lua) loads the main script
 - [LX.lua](LX.lua) is the main explorer
@@ -100,21 +84,19 @@ The full notes are in [docs/Plugins.md](docs/Plugins.md).
 - [examples/](examples) contains example scripts
 - [docs/Plugins.md](docs/Plugins.md) has the deeper plugin notes
 
-## notes
+## Notes
 
-- This project is mostly for learning and debugging.
-- Some features depend on executor support.
-- If you want a clean slate, restart the session.
+- This project is still in Beta and as ROBLOX continues with their horrible updates it could coderot but hopefully i manage to maintain it in my freetime :)
 
-<div align="center">
-  <img src="AllKnowing.gif" width="420" alt="LX For The All Knowing" />
-</div>
 
-## LX For The All Knowing
 
-This is the private tester version of LX. It is for trusted users, contributors, and people with access to the stronger build.
+## Additional
 
-It includes:
+There is also LX Explorer for the all knowing which is restricted
+
+This is the private tester version of LX. It is for trusted users, contributors, and other special people
+
+This version contains:
 
 - Script editing
 - Datastore inspection and management
@@ -122,6 +104,7 @@ It includes:
 - Better 3D viewer
 - 5 built in plugins
 - Priority support
-- Regular updates to keep the project from rotting
 
-This is the stronger version of LX for the people trusted to keep it alive.
+
+
+Made with 💙 by Aero
