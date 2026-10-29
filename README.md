@@ -2,7 +2,7 @@
   <img src="LX.png" width="180" height="180" alt="LX logo" />
   <h1>LX</h1>
   <p>
-    <strong>a cool lil explorer for Roblox debugging</strong>
+    <strong>Explorer Suite</strong>
   </p>
   <p>
     <a href="https://discord.gg/x3eUsw4vdH">
