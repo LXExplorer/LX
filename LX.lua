@@ -19,6 +19,7 @@ Terry davis would be proud
 
 
 local K = {}
+K.repaints = setmetatable({}, { __mode = "k" })
 -- Fixed for this distribution; saved settings and plugins cannot change the edition.
 local ALL_KNOWING = false
 K.Edition = ALL_KNOWING and "All Knowing" or "Regular"
@@ -681,7 +682,6 @@ function K.checkBox(parent, props)
 	}, parent)
 	for k, v in pairs(props or {}) do box[k] = v end
 	new("UICorner", { CornerRadius = UDim.new(0, 3) }, box)
-	local st = stroke(box, T.Border, 1)
 	local legs = {}
 	for i, d in ipairs({ { 5, 5 / 14, 8.5 / 14, 45 }, { 9, 8.6 / 14, 6.6 / 14, -45 } }) do
 		legs[i] = new("Frame", {
@@ -693,7 +693,6 @@ function K.checkBox(parent, props)
 	local function paint(on, dim)
 		local Th = Configuration.Theme
 		box.BackgroundColor3 = on and Th.Accent or Th.Input
-		st.Color = on and Th.Accent or Th.Border
 		box.BackgroundTransparency = dim and 0.5 or 0
 		for _, l in ipairs(legs) do
 			l.Visible = on
@@ -760,6 +759,7 @@ local function paneHeader(parent, text, font)
 		Size = UDim2.new(1, 0, 0, K.TITLE_H), BackgroundColor3 = Configuration.Theme.Main,
 		BorderSizePixel = 0, AutoButtonColor = false, Text = "",
 	}, parent)
+	h:SetAttribute("LXAlpha", true)
 	new("TextLabel", {
 		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0),
 		Font = font or Enum.Font.SourceSans, TextSize = 14, TextColor3 = Configuration.Theme.Text, Text = text,
@@ -2308,7 +2308,7 @@ renderProps = function()
 			local collapsed = State.collapsedCats[catName] and needle == ""
 			local header = new("TextButton", {
 				Size = UDim2.new(1, 0, 0, K.ROW_HEIGHT), Position = UDim2.fromOffset(0, y),
-				BackgroundColor3 = Configuration.Theme.Header, BorderSizePixel = 0, Text = "", AutoButtonColor = false,
+				BackgroundColor3 = Configuration.Theme.Header:Lerp(Color3.new(), 0.18), BorderSizePixel = 0, Text = "", AutoButtonColor = false,
 			}, UI.props)
 			new("TextLabel", {
 				BackgroundTransparency = 1, Position = UDim2.fromOffset(22, 0), Size = UDim2.new(1, -26, 1, 0),
@@ -2328,8 +2328,8 @@ renderProps = function()
 				Name = "catbartop", Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 0, 0),
 				BackgroundColor3 = Color3.fromRGB(18, 18, 18), BorderSizePixel = 0, ZIndex = 3,
 			}, header)
-			header.MouseEnter:Connect(function() header.BackgroundColor3 = Configuration.Theme.Panel end)
-			header.MouseLeave:Connect(function() header.BackgroundColor3 = Configuration.Theme.Header end)
+			header.MouseEnter:Connect(function() header.BackgroundColor3 = Configuration.Theme.Panel:Lerp(Color3.new(), 0.18) end)
+			header.MouseLeave:Connect(function() header.BackgroundColor3 = Configuration.Theme.Header:Lerp(Color3.new(), 0.18) end)
 			header.MouseButton1Click:Connect(function()
 				State.collapsedCats[catName] = not State.collapsedCats[catName] or nil
 				local keep = UI.props.CanvasPosition
@@ -3067,7 +3067,6 @@ function Actions.copy()
 		local c = cloneSafe(i)
 		if c then State.clipboard[#State.clipboard + 1] = c end
 	end
-	notify(string.format("Copied %d item(s)", #State.clipboard))
 end
 function Actions.delete()
 	local n = 0
@@ -3090,7 +3089,6 @@ function Actions.paste(into, explicitParent)
 		if c and pcall(function() c.Parent = parent end) then made[#made + 1] = c end
 	end
 	afterChange(made, parent)
-	notify(string.format("Pasted %d item(s)", #made))
 end
 function Actions.duplicate()
 	local made = {}
@@ -3112,7 +3110,6 @@ function Actions.group(cls)
 	for _, i in ipairs(list) do if pcall(function() i.Parent = g end) then moved += 1 end end
 	State.expanded[g] = true
 	afterChange({ g }, parent)
-	notify(string.format("Grouped %d item(s) as %s", moved, cls))
 end
 function Actions.ungroup()
 	local made = {}
@@ -3226,7 +3223,6 @@ function Actions.zoomTo()
 		{ CFrame = goal, Focus = CFrame.new(target) }):Play()
 	State.camToken += 1
 	local t = State.camToken
-	notify("Zoomed to " .. inst.Name .. " (camera returns in 4s)")
 	delay(4, function()
 		if t == State.camToken and State.camSavedType then
 			pcall(function() cam.CameraType = State.camSavedType end)
@@ -3252,7 +3248,6 @@ function Actions.teleportTo()
 		root.AssemblyLinearVelocity = Vector3.zero
 		root.AssemblyAngularVelocity = Vector3.zero
 	end)
-	notify("Teleported to " .. inst.Name)
 end
 function Actions.viewObject()
 	local cam = workspace.CurrentCamera
@@ -3276,7 +3271,6 @@ function Actions.viewObject()
 	State.viewing.conn = subj.AncestryChanged:Connect(function() if not subj.Parent then stopViewing() end end)
 	cam.CameraType = Enum.CameraType.Custom
 	cam.CameraSubject = subj
-	notify("Viewing " .. inst.Name)
 end
 function Actions.copyPath()
 	local list = #State.selection > 0 and State.selection or { State.selected }
@@ -3310,14 +3304,14 @@ function Actions.saveToFile()
 	if ALL_KNOWING and Services.saveInstanceFn then
 		local ok = pcall(Services.saveInstanceFn, inst)
 		if not ok then ok = pcall(Services.saveInstanceFn, { Object = inst, FilePath = fname }) end
-		if ok then notify("Saved " .. inst.Name) return end
+		if ok then return end
 	end
 	K.ensureFolder("LX/Saves")
 	local out = {}
 	dumpInstance(inst, 0, out)
 	local path = string.format("LX/Saves/%s_%d.txt", fname, os.time())
 	local ok = pcall(writefile, path, table.concat(out, "\n"))
-	notify(ok and ("Saved to " .. path) or "Save failed")
+	if not ok then notify("Save failed") end
 end
 
 UI.picker = new("Frame", {
@@ -3370,7 +3364,7 @@ local function insertClass(cls)
 		end
 	end
 	hidePicker()
-	if #made > 0 then afterChange(made); notify(string.format("Inserted %s", cls)) else notify("Couldn't insert " .. cls) end
+	if #made > 0 then afterChange(made) else notify("Couldn't insert " .. cls) end
 end
 
 local function insertService(name)
@@ -3381,7 +3375,6 @@ local function insertService(name)
 		table.insert(Cache.extraRoots, s)
 	end
 	Cache.track(s); Cache.indexTree(s); afterChange({ s })
-	notify("Added " .. s.ClassName)
 end
 
 local function fillPicker()
@@ -3659,7 +3652,6 @@ do
 		for _, d in ipairs(root:GetDescendants()) do pcall(add, d) end
 		if #list == 0 then notify("No scripts under " .. root.Name) return end
 		local base = ("%s/%s/Scripts_%s_%s"):format(ROOT, gameTag(), K.sanitizeFileName(root.Name), stamp())
-		notify(("Dumping %d scripts..."):format(#list))
 		local n, index = 0, {}
 		for i, s in ipairs(list) do
 			local rel = fullName(s):gsub("%.", "/"):gsub("[^%w_/%-]", "_")
@@ -3668,7 +3660,6 @@ do
 			if i % 5 == 0 then wait() end
 		end
 		write(base .. "/_index.txt", table.concat(index, "\n"))
-		notify(("Saved %d scripts to %s"):format(n, base))
 	end
 
 	function FileTools.dumpRunning()
@@ -3690,7 +3681,6 @@ do
 			if write(path, header(s) .. decompile(s)) then n += 1 end
 			if i % 5 == 0 then wait() end
 		end
-		notify(("Saved %d running scripts/modules"):format(n))
 	end
 
 	function FileTools.saveBytecode(s)
@@ -3699,7 +3689,7 @@ do
 		local ok, bc = pcall(getBytecode, s)
 		if not ok or type(bc) ~= "string" then notify("Could not read bytecode") return end
 		local path = ("%s/%s/Bytecode/%s_%s.luac"):format(ROOT, gameTag(), K.sanitizeFileName(fullName(s)), stamp())
-		if write(path, bc) then notify("Saved bytecode to " .. path) end
+		write(path, bc)
 	end
 
 	function FileTools.exportProps(list)
@@ -3708,7 +3698,7 @@ do
 		local okJ, json = pcall(Http.JSONEncode, Http, #out == 1 and out[1] or out)
 		if not okJ then notify("JSON encode failed") return end
 		local path = ("%s/%s/Properties/%s_%s.json"):format(ROOT, gameTag(), K.sanitizeFileName(list[1].Name), stamp())
-		if write(path, json) then notify("Saved properties to " .. path) end
+		write(path, json)
 	end
 
 	function FileTools.exportTree(root)
@@ -3723,7 +3713,6 @@ do
 		walk(root, 0)
 		local path = ("%s/%s/Trees/%s_%s.txt"):format(ROOT, gameTag(), K.sanitizeFileName(root.Name), stamp())
 		if write(path, ("-- %s (%d instances)\n"):format(fullName(root), count) .. table.concat(lines, "\n")) then
-			notify(("Saved tree (%d instances)"):format(count))
 		end
 	end
 
@@ -3770,7 +3759,7 @@ do
 		out[#out + 1] = "I[1].Parent = " .. (root:IsA("LayerCollector") and 'game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")' or "workspace")
 		out[#out + 1] = "return I[1]"
 		local path = ("%s/%s/Code/%s_%s.lua"):format(ROOT, gameTag(), K.sanitizeFileName(root.Name), stamp())
-		if write(path, table.concat(out, "\n")) then notify(("Saved %d instances as code"):format(id)) end
+		write(path, table.concat(out, "\n"))
 	end
 
 	function FileTools.exportRemotes()
@@ -3790,7 +3779,7 @@ do
 		end
 		table.sort(lines)
 		local path = ("%s/%s/Remotes_%s.txt"):format(ROOT, gameTag(), stamp())
-		if write(path, ("-- %d remotes/bindables\n"):format(#lines) .. table.concat(lines, "\n")) then notify(("Saved %d remotes"):format(#lines)) end
+		write(path, ("-- %d remotes/bindables\n"):format(#lines) .. table.concat(lines, "\n"))
 	end
 
 	function FileTools.exportNil()
@@ -3801,7 +3790,7 @@ do
 		local lines = {}
 		for _, i in ipairs(list) do lines[#lines + 1] = ("[%s] %s"):format(i.ClassName, i.Name) end
 		local path = ("%s/%s/NilInstances_%s.txt"):format(ROOT, gameTag(), stamp())
-		if write(path, table.concat(lines, "\n")) then notify(("Saved %d nil instances"):format(#lines)) end
+		write(path, table.concat(lines, "\n"))
 	end
 
 	function FileTools.exportGameInfo()
@@ -3813,16 +3802,14 @@ do
 		end)
 		local okJ, json = pcall(Http.JSONEncode, Http, info)
 		local path = ("%s/%s/GameInfo_%s.json"):format(ROOT, gameTag(), stamp())
-		if okJ and write(path, json) then notify("Saved game info") end
+		if okJ then write(path, json) end
 	end
 
 	function FileTools.saveGame()
 	if not ALL_KNOWING then return nil, "Available only in LX All Knowing" end
 		if not Services.saveInstanceFn then notify("saveinstance not supported") return end
-		notify("Saving full game... this can take a while")
 		local ok = pcall(Services.saveInstanceFn, { FilePath = gameTag(), mode = "optimized", noscripts = false })
-		if not ok then ok = pcall(Services.saveInstanceFn) end
-		notify(ok and "Game saved to your workspace folder" or "saveinstance failed")
+		if not ok then notify("saveinstance failed") end
 	end
 
 	function FileTools.log(msg)
@@ -4073,6 +4060,7 @@ end
 local function placeMin(w)
 	local b = w.minBtn
 	b.Visible = #w.panes > 0
+	if w.dex then b.Position = UDim2.new(1, w.closeBtn and -36 or -18, 0, 2) return end
 	if w.tool then b.Position = UDim2.new(1, -61, 0, 2) return end
 	if sideOf(w) == "left" then b.Position = UDim2.fromOffset(1, 2)
 	else b.Position = UDim2.new(1, -31, 0, 2) end
@@ -4131,6 +4119,20 @@ local function placePaneButtons(w)
 end
 local function layoutWindow(w)
 	local n = #w.panes
+	for _, pane in ipairs(w.panes) do
+		if pane.body then pane.body.Visible = not w.collapsed end
+	end
+	if w.collapsed then
+		w.splitter.Visible = false
+		w.tabBar.Visible = false
+		for i, pane in ipairs(w.panes) do
+			pane.frame.Visible = i == 1
+			pane.frame.Position = UDim2.new()
+			pane.frame.Size = UDim2.fromScale(1, 1)
+		end
+		placeMin(w)
+		return
+	end
 	w.splitter.Visible = false
 	w.tabBar.Visible = false
 	if n == 0 then placeMin(w) return end
@@ -4267,8 +4269,9 @@ local function setCollapsed(w, on, instant)
 		end
 	end
 	w.collapsed = on
+	layoutWindow(w)
 	for _, h in ipairs({ w.grip, w.leftEdge, w.rightEdge, w.bottomEdge, w.topEdge }) do h.Visible = not on end
-	local goal = on and UDim2.fromOffset(width, K.TITLE_H)
+	local goal = on and UDim2.fromOffset(width, w.dex and 20 or K.TITLE_H)
 		or UDim2.fromOffset(width, math.max(260, w.expandedH or w.floatSize.Y.Offset))
 	if not on then w.floatSize = goal end
 	if instant then
@@ -4771,7 +4774,7 @@ Delve.TITLE_H = K.TITLE_H
 local function newPane(name, title, font)
 	local frame = new("Frame", { Name = name:lower(), BackgroundTransparency = 1, ClipsDescendants = true }, nil)
 	local header = paneHeader(frame, title, font)
-	local body = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, K.TITLE_H), Size = UDim2.new(1, 0, 1, -K.TITLE_H) }, frame)
+	local body = new("Frame", { BackgroundTransparency = 1, ClipsDescendants = true, Position = UDim2.fromOffset(0, K.TITLE_H), Size = UDim2.new(1, 0, 1, -K.TITLE_H) }, frame)
 	local label = header:FindFirstChildOfClass("TextLabel")
 	if label then
 		label.Size = UDim2.new(1, -110, 1, 0)
@@ -5235,13 +5238,50 @@ function K.window(name, title, font)
 	win.frame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 	do
 		local header = win.pane.header
-		local H = K.TITLE_H - 6
-		header.Size = UDim2.new(1, 0, 0, H - 1)
+		local H = 20
+		local BAR = Color3.new(0.20392157137394, 0.20392157137394, 0.20392157137394)
+		local HOV = Color3.new(0.12549020349979, 0.12549020349979, 0.12549020349979)
+		win.dex = true
+		header:SetAttribute("LXAlpha", true)
+		header.Size = UDim2.new(1, 0, 0, H)
 		header.ZIndex = 2
+		header.BackgroundColor3 = BAR
+		K.repaints[header] = function() header.BackgroundColor3 = BAR end
 		win.body.Position = UDim2.fromOffset(0, H)
 		win.body.Size = UDim2.new(1, 0, 1, -H)
-		win.minBtn.Size = UDim2.fromOffset(30, H - 5)
-		if win.closeBtn then win.closeBtn.Size = UDim2.fromOffset(30, H - 5) end
+		local lbl = win.pane.label
+		if lbl then
+			for i = #(K.paneTitles or {}), 1, -1 do
+				if K.paneTitles[i].label == lbl then table.remove(K.paneTitles, i) end
+			end
+			lbl.Font = Enum.Font.SourceSans
+			lbl.TextSize = 14
+			lbl.TextColor3 = Color3.new(1, 1, 1)
+			lbl.TextXAlignment = Enum.TextXAlignment.Left
+			lbl.Position = UDim2.fromOffset(5, 0)
+			lbl.Size = UDim2.new(1, -46, 0, H)
+			lbl.ZIndex = 3
+			K.repaints[lbl] = function() lbl.TextColor3 = Color3.new(1, 1, 1) end
+		end
+		local function dexButton(b, image, x)
+			if not b then return end
+			for _, c in ipairs(b:GetChildren()) do
+				if c:IsA("GuiObject") then c.Visible = false end
+			end
+			b.Size = UDim2.fromOffset(16, 16)
+			b.Position = UDim2.new(1, x, 0, 2)
+			b.BackgroundColor3 = HOV
+			b.BackgroundTransparency = 1
+			b.ZIndex = 9
+			new("ImageLabel", {
+				Name = "DexIcon", BackgroundTransparency = 1, Image = image,
+				Position = UDim2.fromOffset(3, 3), Size = UDim2.fromOffset(10, 10), ZIndex = 10,
+			}, b)
+			K.repaints[b] = function() b.BackgroundColor3 = HOV end
+			b.MouseEnter:Connect(function() b.BackgroundColor3 = HOV end)
+		end
+		dexButton(win.closeBtn, "rbxassetid://5054663650", -18)
+		dexButton(win.minBtn, "rbxassetid://5034768003", win.closeBtn and -36 or -18)
 	end
 	setPanes(win, { win.pane }, "stack")
 	function win.show(offset)
@@ -5533,7 +5573,7 @@ local function buildScriptWindow()
 		pcall(K.saveEdit, target, text)
 		local okS, errS = pcall(showSource, text)
 		if not okS then warn("[LX] couldn't show saved script: " .. tostring(errS)) end
-		notify(ok and ("Saved " .. target.Name) or ("Saved, but it errored: " .. tostring(msg)))
+		if not ok then notify(tostring(msg)) end
 	end)
 
 	sw.revertBtn.MouseButton1Click:Connect(function()
@@ -5542,7 +5582,6 @@ local function buildScriptWindow()
 		K.revertEdit(target)
 		sw.editTarget = nil
 		sw.setEditing(false)
-		notify("Discarded changes to " .. target.Name)
 		Delve.openScriptViewer(target)
 	end)
 
@@ -6206,7 +6245,6 @@ do
 			BackgroundColor3 = T.Accent, BorderSizePixel = 0, ZIndex = 57,
 		}, b)
 		new("UICorner", { CornerRadius = UDim.new(0, 4) }, boxF)
-		local boxStroke = stroke(boxF, T.Text, 1)
 		local chk = uiImage({ Size = UDim2.fromScale(1, 1), ZIndex = 58 }, boxF, "check", T.TabText)
 		new("TextLabel", {
 			BackgroundTransparency = 1, Position = UDim2.fromOffset(32, 0), Size = UDim2.new(1, -40, 1, 0),
@@ -6216,8 +6254,8 @@ do
 		local function paint(forced)
 			local on
 			if forced ~= nil then on = forced else on = get() and true or false end
-			boxF.BackgroundTransparency = on and 0 or 1
-			boxStroke.Color = on and T.Accent or T.Text
+			boxF.BackgroundColor3 = on and T.Accent or T.Input
+			boxF.BackgroundTransparency = 0
 			chk.Visible = on
 		end
 		b.MouseEnter:Connect(function() b.BackgroundTransparency = 0 end)
@@ -6301,46 +6339,57 @@ do
 		Name = "backdrop", Size = UDim2.fromScale(1, 1), BorderSizePixel = 0, BackgroundTransparency = 0.35, Visible = false,
 	}, UI.introGui)
 	UI.loading = new("Frame", {
-		Name = "loading", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(400, 300), BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(255, 255, 255), Visible = false,
+		Name = "loading", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, 336, 1, -16),
+		Size = UDim2.fromOffset(300, 84), BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		Visible = false, ClipsDescendants = true,
 	}, UI.introGui)
+	new("UICorner", { CornerRadius = UDim.new(0, 6) }, UI.loading)
 	UI.loadingStroke = new("UIStroke", { Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, UI.loading)
-	new("UIGradient", { Rotation = 40, Color = ColorSequence.new(Color3.new(1, 1, 1)) }, UI.loading)
 	UI.loadingAccent = new("Frame", {
-		Position = UDim2.fromOffset(16, 0), Size = UDim2.new(1, -32, 0, 2), BorderSizePixel = 0,
+		Position = UDim2.fromOffset(0, 0), Size = UDim2.new(0, 2, 1, -3), BorderSizePixel = 0,
 	}, UI.loading)
 	UI.introLogo = new("ImageLabel", {
-		BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(56, 14),
-		Size = UDim2.fromOffset(287, 188), ImageRectSize = Vector2.new(336, 220),
+		BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(10, 9),
+		Size = UDim2.fromOffset(96, 63), ImageRectSize = Vector2.new(336, 220),
 		ResampleMode = Enum.ResamplerMode.Default,
 	}, UI.loading)
 	UI.introTitle = new("TextLabel", {
-		BackgroundTransparency = 1, Position = UDim2.fromOffset(20, 206), Size = UDim2.fromOffset(360, 24),
-		Text = "LX", TextSize = 22, TextXAlignment = Enum.TextXAlignment.Left,
+		BackgroundTransparency = 1, Position = UDim2.fromOffset(116, 14), Size = UDim2.fromOffset(172, 22),
+		Text = "LX", TextSize = 20, TextXAlignment = Enum.TextXAlignment.Left,
 		FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold),
 	}, UI.loading)
 	UI.introEdition = new("TextLabel", {
-		BackgroundTransparency = 1, Position = UDim2.fromOffset(20, 206), Size = UDim2.fromOffset(360, 24),
-		Text = "Regular", TextSize = 16, TextXAlignment = Enum.TextXAlignment.Right,
+		BackgroundTransparency = 1, Position = UDim2.fromOffset(116, 14), Size = UDim2.fromOffset(172, 22),
+		Text = "Regular", TextSize = 14, TextXAlignment = Enum.TextXAlignment.Right,
 		FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.SemiBold),
 	}, UI.loading)
 	UI.introStatus = new("TextLabel", {
-		BackgroundTransparency = 1, Position = UDim2.fromOffset(20, 236), Size = UDim2.fromOffset(290, 18),
-		Text = "Starting up", TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left,
+		BackgroundTransparency = 1, Position = UDim2.fromOffset(116, 44), Size = UDim2.fromOffset(130, 18),
+		Text = "Starting up", TextSize = 14, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
 		FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular),
 	}, UI.loading)
 	UI.introPercent = new("TextLabel", {
-		BackgroundTransparency = 1, Position = UDim2.fromOffset(310, 236), Size = UDim2.fromOffset(70, 18),
+		BackgroundTransparency = 1, Position = UDim2.fromOffset(246, 44), Size = UDim2.fromOffset(42, 18),
 		Text = "0%", TextSize = 14, TextXAlignment = Enum.TextXAlignment.Right,
 		FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.SemiBold),
 	}, UI.loading)
 	UI.loadingTrack = new("Frame", {
-		Position = UDim2.fromOffset(20, 264), Size = UDim2.fromOffset(360, 8),
+		Position = UDim2.new(0, 0, 1, -3), Size = UDim2.new(1, 0, 0, 3),
 		BorderSizePixel = 0, ClipsDescendants = true,
 	}, UI.loading)
 	UI.loadingFill = new("Frame", {
 		Size = UDim2.fromScale(0, 1), BorderSizePixel = 0,
 	}, UI.loadingTrack)
+	UI.introSkip = new("TextButton", {
+		Name = "skip", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "",
+		AutoButtonColor = false, ZIndex = 5,
+	}, UI.loading)
+	UI.introSkip.MouseButton1Click:Connect(function()
+		if K.introSkipped then return end
+		K.introSkipped = true
+		K.introDone = true
+		task.spawn(function() pcall(K.foldIntro) end)
+	end)
 	K.introStages = {
 		{ 0.05, "Checking executor" }, { 0.6, "Indexing game" }, { 0.7, "Caching instances" },
 		{ 0.8, "Checking classes" }, { 0.95, "Loading icons" }, { 2, "Finishing up" },
@@ -6375,12 +6424,12 @@ do
 			local started = os.clock()
 			local elapsed = 0
 			for frame = 0, 35 do
-				if not UI.introGui.Parent then return end
+				if not UI.introGui.Parent or K.introSkipped then break end
 				local cell = frame % 9
 				UI.introLogo.Image = assets[math.floor(frame / 9) + 1]
 				UI.introLogo.ImageRectOffset = Vector2.new((cell % 3) * 336, math.floor(cell / 3) * 220)
 				elapsed += frame == 0 and 0.14 or (frame == 35 and 0.98 or 0.03)
-				repeat Services.RunService.Heartbeat:Wait() until os.clock() - started >= elapsed or not UI.introGui.Parent
+				repeat Services.RunService.Heartbeat:Wait() until os.clock() - started >= elapsed or not UI.introGui.Parent or K.introSkipped
 			end
 			K.introDone = true
 		end)
@@ -6490,30 +6539,38 @@ do
 end
 
 do
-	function K.foldIntro()
+	function K.slideIntro()
 		local box = UI.loading
 		if not (box and box.Parent) then return end
-		local grad = box:FindFirstChildOfClass("UIGradient")
-		K.animate(0.2, function(a)
-			UI.introLogo.ImageTransparency = a
-			UI.introTitle.TextTransparency = a
-			UI.loadingTrack.BackgroundTransparency = a
-			UI.loadingFill.BackgroundTransparency = a
-			UI.introEdition.TextTransparency = a
-			UI.introStatus.TextTransparency = a
-			UI.introPercent.TextTransparency = a
-			UI.loadingAccent.BackgroundTransparency = a
-			UI.loadingStroke.Transparency = a
+		box.Visible = true
+		K.animate(Options.LowEnd and 0 or 0.35, function(a)
+			box.Position = UDim2.new(1, -16 + 352 * (1 - K.easeOut(a)), 1, -16)
 		end)
-		if not grad then return end
-		grad.Rotation = 30
-		K.animate(0.4, function(a)
-			grad.Transparency = K.foldSeq(1 - K.easeIn(a))
+	end
+	function K.foldIntro()
+		local box = UI.loading
+		if not (box and box.Parent) or K.introFolding ~= nil then
+			while K.introFolding do Services.RunService.Heartbeat:Wait() end
+			return
+		end
+		K.introFolding = true
+		local start = box.Position.X.Offset
+		K.animate(Options.LowEnd and 0 or 0.3, function(a)
+			local e = K.easeIn(a)
+			box.Position = UDim2.new(1, start + (336 - start) * e, 1, -16)
+			UI.introLogo.ImageTransparency = e
+			UI.introTitle.TextTransparency = e
+			UI.introEdition.TextTransparency = e
+			UI.introStatus.TextTransparency = e
+			UI.introPercent.TextTransparency = e
+			UI.loadingTrack.BackgroundTransparency = e
+			UI.loadingFill.BackgroundTransparency = e
+			UI.loadingAccent.BackgroundTransparency = e
+			UI.loadingStroke.Transparency = e
+			box.BackgroundTransparency = e
 		end)
-		box.BackgroundTransparency = 1
-		K.animate(0.2, function(a)
-			UI.introBackdrop.BackgroundTransparency = 0.35 + 0.65 * a
-		end)
+		box.Visible = false
+		K.introFolding = false
 	end
 end
 
@@ -6594,9 +6651,8 @@ task.spawn(function()
 	local waitedAt = os.clock()
 	while not K.themeReady and os.clock() - waitedAt < 10 do wait() end
 	pcall(K.paintIntro)
-	UI.introBackdrop.Visible = true
-	UI.loading.Visible = true
 	K.startIntro()
+	task.spawn(K.slideIntro)
 	Cache.preload(K.introProgress)
 	Cache.ready = true
 	while not K.introDone and UI.introGui.Parent do Services.RunService.Heartbeat:Wait() end
@@ -6715,7 +6771,7 @@ local function bootApps()
 		return out
 	end
 	local PRESETS = {
-		{ "GitHub Dark", { bg = "0d1117", fg = "c9d1d9", accent = "2f81f7", panel = "21262d", border = "30363d", keyword = "ff7b72", string = "a5d6ff", comment = "8b949e", number = "79c0ff", builtin = "ffa657", fn = "d2a8ff", property = "7ee787" } },
+		{ "GitHub Dark", { bg = "0d1117", fg = "c9d1d9", accent = "ffffff", accentText = "000000", panel = "21262d", border = "30363d", keyword = "ff7b72", string = "a5d6ff", comment = "8b949e", number = "79c0ff", builtin = "ffa657", fn = "d2a8ff", property = "7ee787" } },
 		{ "Everforest", { bg = "2d353b", fg = "d3c6aa", accent = "a7c080", accentText = "2d353b", keyword = "e67e80", string = "a7c080", comment = "859289", number = "d699b6", builtin = "7fbbb3", fn = "dbbc7f", property = "83c092" } },
 	}
 	for _, p in ipairs(PRESETS) do
@@ -6914,6 +6970,40 @@ local function bootApps()
 		return list
 	end
 
+	local alphaBase = setmetatable({}, { __mode = "k" })
+	local alphaLast = setmetatable({}, { __mode = "k" })
+	local alphaHooked = false
+	local function alphaApply(o)
+		local prop
+		if o:IsA("GuiObject") then prop = "BackgroundTransparency"
+		elseif o:IsA("UIStroke") then prop = "Transparency"
+		else return end
+		if o:GetAttribute("LXNoAlpha") or (o.Parent and o.Parent:GetAttribute("LXNoAlpha")) then return end
+		local wt = math.clamp(tonumber(Settings.data.windowTransparency) or 0, 0, 0.9)
+		if alphaBase[o] == nil then
+			alphaBase[o] = o[prop]
+			o:GetPropertyChangedSignal(prop):Connect(function()
+				local cur = o[prop]
+				if alphaLast[o] and math.abs(cur - alphaLast[o]) < 1e-4 then return end
+				alphaBase[o] = cur
+				alphaApply(o)
+			end)
+		end
+		local b = alphaBase[o]
+		local v = b >= 1 and 1 or 1 - (1 - b) * (1 - wt)
+		alphaLast[o] = v
+		o[prop] = v
+	end
+	local function applyWindowAlpha()
+		local wt = math.clamp(tonumber(Settings.data.windowTransparency) or 0, 0, 0.9)
+		if wt <= 0 and not alphaHooked then return end
+		if not alphaHooked then
+			alphaHooked = true
+			UI.gui.DescendantAdded:Connect(function(o) task.defer(function() if o.Parent then alphaApply(o) end end) end)
+		end
+		for _, o in ipairs(UI.gui:GetDescendants()) do alphaApply(o) end
+	end
+
 	applyBackdrop = function()
 		local image = resolveImage(Settings.data.image)
 		local on = image ~= ""
@@ -6934,6 +7024,7 @@ local function bootApps()
 		for _, f in ipairs(blendTargets()) do
 			if f then f.BackgroundTransparency = blend end
 		end
+		applyWindowAlpha()
 	end
 
 	local function iconInto(img, studioName, fallbackClass)
@@ -7062,48 +7153,58 @@ local function bootApps()
 
 	do
 		local UIS = Services.UserInputService
-		local downAt, downPos
-		UIS.InputBegan:Connect(function(input, processed)
-			if not Options.ClickToSelect or processed then return end
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				downAt, downPos = os.clock(), input.Position
-			end
-		end)
-		UIS.InputEnded:Connect(function(input, processed)
-			if not Options.ClickToSelect or processed or not downAt then return end
-			if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
-			local quick = os.clock() - downAt < 0.4 and (input.Position - downPos).Magnitude < 6
-			downAt = nil
-			if not quick then return end
-			local pos = input.Position
-			local guiRoot = UI.guiParent
-			if guiRoot then
-				local okG, hits = pcall(function()
-					return game:GetService("Players").LocalPlayer.PlayerGui:GetGuiObjectsAtPosition(pos.X, pos.Y)
-				end)
-				for _, root in ipairs({ UI.gui, UI.toggleGui, UI.colorPicker }) do
-					if root and root.Parent then
-						for _, g in ipairs(root:GetDescendants()) do
-							if g:IsA("GuiObject") and g.Visible and g.BackgroundTransparency < 1 then
-								local ap, as = g.AbsolutePosition, g.AbsoluteSize
-								if pos.X >= ap.X and pos.Y >= ap.Y and pos.X <= ap.X + as.X and pos.Y <= ap.Y + as.Y then return end
+		local downInput, downAt, downPos
+		local function overUI(pos)
+			for _, root in pairs({ UI.gui, UI.toggleGui, UI.colorPicker }) do
+				if root and root.Parent then
+					for _, g in ipairs(root:GetDescendants()) do
+						if g:IsA("GuiObject") then
+							local visible, ancestor = true, g
+							while ancestor do
+								if ancestor:IsA("GuiObject") then
+									if not ancestor.Visible then visible = false break end
+									if ancestor == g or ancestor.ClipsDescendants then
+										local ap, size = ancestor.AbsolutePosition, ancestor.AbsoluteSize
+										if pos.X < ap.X or pos.Y < ap.Y or pos.X > ap.X + size.X or pos.Y > ap.Y + size.Y then visible = false break end
+									end
+								elseif ancestor:IsA("ScreenGui") and not ancestor.Enabled then
+									visible = false break
+								end
+								ancestor = ancestor.Parent
 							end
+							if visible then return true end
 						end
 					end
 				end
 			end
+			return false
+		end
+		UIS.InputBegan:Connect(function(input, processed)
+			if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+			downInput, downAt, downPos = nil, nil, nil
+			if not Options.ClickToSelect or processed or UIS:GetFocusedTextBox() or overUI(input.Position) then return end
+			downInput, downAt, downPos = input, os.clock(), input.Position
+		end)
+		UIS.InputEnded:Connect(function(input, processed)
+			if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+			if input.UserInputType == Enum.UserInputType.Touch and input ~= downInput then return end
+			local started, startPos = downAt, downPos
+			downInput, downAt, downPos = nil, nil, nil
+			if not Options.ClickToSelect or processed or not started or not startPos or UIS:GetFocusedTextBox() then return end
+			if os.clock() - started >= 0.4 or (input.Position - startPos).Magnitude >= 6 then return end
+			local pos = input.Position
+			if overUI(pos) then return end
 			local cam = workspace.CurrentCamera
 			if not cam then return end
-			local ray = cam:ViewportPointToRay(pos.X, pos.Y)
+			local ray = cam:ScreenPointToRay(pos.X, pos.Y)
 			local params = RaycastParams.new()
-			local char = game:GetService("Players").LocalPlayer.Character
-			if char then params.FilterDescendantsInstances = { char }; params.FilterType = Enum.RaycastFilterType.Exclude end
 			local hit = workspace:Raycast(ray.Origin, ray.Direction * 5000, params)
 			local target = hit and hit.Instance
 			if not target then return end
 			local ctrl = UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.RightControl)
-			if ctrl then pcall(toggleSelect, target) else pcall(selectInstance, target) end
-			pcall(reveal, target)
+			if ctrl then toggleSelect(target) else selectInstance(target) end
+			reveal(target)
+			pcall(function() game:GetService("Selection"):Set(State.selection) end)
 		end)
 	end
 	local function buildSettingsWindow()
@@ -7130,6 +7231,60 @@ local function bootApps()
 		checkbox(scroll, nextOrder(), "Low-end mode",
 			function() return Options.ForceLowEnd == true end,
 			function(v) Options.ForceLowEnd = v; Options.LowEnd = v or Options.LowEnd; K.applyPerformance(); Settings.save() end)
+		end)
+
+		safe("Window", function()
+		sectionTitle(scroll, nextOrder(), "Window")
+		local T = Configuration.Theme
+		local UIS = game:GetService("UserInputService")
+		local row = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, touchH(26)), LayoutOrder = nextOrder(), ZIndex = 3 }, scroll)
+		row:SetAttribute("LXNoAlpha", true)
+		local lbl = new("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.fromOffset(8, 0), Size = UDim2.new(0.45, -8, 1, 0),
+			Font = Enum.Font.SourceSans, TextSize = 15, TextColor3 = T.Text, Text = "",
+			TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4,
+		}, row)
+		local track = new("TextButton", {
+			AutoButtonColor = false, Text = "", BackgroundColor3 = Color3.fromRGB(200, 200, 200), BorderSizePixel = 0,
+			Position = UDim2.new(0.45, 0, 0.5, -3), Size = UDim2.new(0.55, -14, 0, 6), ZIndex = 4,
+		}, row)
+		new("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
+		track:SetAttribute("LXNoAlpha", true)
+		local fill = new("Frame", { BackgroundColor3 = T.Accent, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1), ZIndex = 5 }, track)
+		new("UICorner", { CornerRadius = UDim.new(1, 0) }, fill)
+		fill:SetAttribute("LXNoAlpha", true)
+		local knob = new("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0, 0.5), Size = UDim2.fromOffset(12, 12),
+			BackgroundColor3 = T.Text, BorderSizePixel = 0, ZIndex = 6,
+		}, track)
+		new("UICorner", { CornerRadius = UDim.new(1, 0) }, knob)
+		knob:SetAttribute("LXNoAlpha", true)
+		local dragging = false
+		local function paint()
+			local v = math.clamp(tonumber(Settings.data.windowTransparency) or 0, 0, 0.9)
+			fill.Size = UDim2.fromScale(v / 0.9, 1)
+			knob.Position = UDim2.fromScale(v / 0.9, 0.5)
+			lbl.Text = "Transparency: " .. math.floor(v * 100 + 0.5) .. "%"
+		end
+		local function setFrom(x)
+			local a = math.clamp((x - track.AbsolutePosition.X) / math.max(track.AbsoluteSize.X, 1), 0, 1)
+			Settings.data.windowTransparency = math.floor(a * 90 + 0.5) / 100
+			paint()
+			pcall(applyBackdrop)
+		end
+		local function isPress(i)
+			return i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch
+		end
+		track.InputBegan:Connect(function(i)
+			if isPress(i) then dragging = true; setFrom(i.Position.X) end
+		end)
+		UIS.InputChanged:Connect(function(i)
+			if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then setFrom(i.Position.X) end
+		end)
+		UIS.InputEnded:Connect(function(i)
+			if dragging and isPress(i) then dragging = false; Settings.save() end
+		end)
+		paint()
 		end)
 
 		safe("General", function()
@@ -7174,13 +7329,8 @@ local function bootApps()
 		sectionTitle(scroll, nextOrder(), "Import Theme")
 		local nameBox = inputField(scroll, nextOrder(), "Theme name")
 		local jsonBox = inputField(scroll, nextOrder(), "Theme JSON", 96)
-		local status = new("TextLabel", {
-			BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 18), LayoutOrder = 0, ZIndex = 3,
-			Font = Enum.Font.SourceSans, TextSize = 13, TextColor3 = Configuration.Theme.Dim, Text = "",
-			TextXAlignment = Enum.TextXAlignment.Left, Visible = false,
-		}, scroll)
+		local status = Instance.new("TextLabel")
 		local actions = buttonRow(scroll, nextOrder())
-		status.LayoutOrder = nextOrder()
 
 		local importBtn = toolButton(actions, "Import", 1)
 		importBtn.MouseButton1Click:Connect(function()
@@ -7385,12 +7535,7 @@ local function bootApps()
 		sectionTitle(scroll, nextOrder(), "Save")
 		local row1 = buttonRow(scroll, nextOrder())
 		local row2 = buttonRow(scroll, nextOrder())
-		local status = new("TextLabel", {
-			BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 36), LayoutOrder = nextOrder(), ZIndex = 3,
-			Font = Enum.Font.SourceSans, TextSize = 13, TextColor3 = Configuration.Theme.Dim, TextWrapped = true,
-			Text = "", Visible = false,
-			TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
-		}, scroll)
+		local status = Instance.new("TextLabel")
 
 		local busy = false
 		local function run(kind)
@@ -7399,10 +7544,7 @@ local function bootApps()
 			if kind ~= "place" and #list == 0 then status.Text = "Select something in the Explorer first." return end
 			busy = true
 			task.spawn(function()
-				local function say(t, busyNow)
-					status.Visible = true
-					if busyNow then K.loading(status) else status.Text = t end
-				end
+				local function say() end
 				local Fish = Fishy.get(say)
 				if not Fish then busy = false return end
 				local opts = table.clone(Fishy.opts)
@@ -7462,6 +7604,10 @@ local function bootApps()
 	end
 
 	Apps.list = {
+		{ name = "Click to Select", ribbon = "clickselect", selected = function() return Options.ClickToSelect == true end, open = function()
+			Options.ClickToSelect = not Options.ClickToSelect
+			Settings.save()
+		end },
 		{ name = "Explorer", icon = "Workspace", fallback = "Workspace", ribbon = "explorer", open = function() togglePane(Panes.explorer) end },
 		{ name = "Properties", icon = "Property", fallback = "Configuration", ribbon = "properties", open = function() togglePane(Panes.props) end },
 		{ name = "Fishilizer", logo = true, icon = "Model", fallback = "Model", open = function()
@@ -7529,6 +7675,7 @@ local function bootApps()
 		local T = Configuration.Theme
 		local G = { BTN = Delve_IsMobile and 38 or 30, ICON = 24, PAD = 3, GAP = 3, OFF = 0, ARROW = 24, CW = 22, collapsed = true }
 		G.W = G.BTN + G.PAD * 2
+		G.stateButtons = {}
 
 		local dock = new("Frame", {
 			Name = "appdock", Size = UDim2.fromOffset(G.W, 100), BackgroundColor3 = T.Header,
@@ -7577,6 +7724,7 @@ local function bootApps()
 
 		local side = "left"
 		local function place()
+			for _, paint in ipairs(G.stateButtons) do paint() end
 			local ok, w = pcall(ownerOf, Panes.explorer)
 			local show = ok and w and isOpen(w)
 			dock.Visible = show and true or false
@@ -7611,7 +7759,7 @@ local function bootApps()
 			return true
 		end
 		function G.loadIcon(ic, app)
-			applyClassIcon(ic, app.fallback)
+			if app.fallback then applyClassIcon(ic, app.fallback) end
 			task.spawn(function()
 				if app.iconId then
 					if G.setImage(ic, type(app.iconId) == "number" and ("rbxassetid://" .. app.iconId) or app.iconId) then return end
@@ -7681,9 +7829,19 @@ local function bootApps()
 				ScaleType = Enum.ScaleType.Fit, ResampleMode = Enum.ResamplerMode.Default, ZIndex = 10065,
 			}, b)
 			G.loadIcon(ic, app)
+			local hovering = false
+			local function paint()
+				local selected = app.selected and app.selected() == true or false
+				b:SetAttribute("On", selected)
+				b.BackgroundColor3 = selected and Configuration.Theme.Selected or Configuration.Theme.MenuHover
+				b.BackgroundTransparency = (selected or hovering) and 0 or 1
+			end
+			if app.selected then table.insert(G.stateButtons, paint) end
+			K.repaints[b] = paint
+			paint()
 			watchHover(b)
 			b.MouseEnter:Connect(function()
-				b.BackgroundTransparency = 0
+				hovering = true; paint()
 				tip.Text = app.name
 				tip.BackgroundColor3 = Configuration.Theme.Panel
 				tip.TextColor3 = Configuration.Theme.TabText
@@ -7695,11 +7853,12 @@ local function bootApps()
 				tip.Position = UDim2.fromOffset(math.floor(tx), math.floor(bp.Y + (bs.Y - 22) / 2))
 				tip.Visible = true
 			end)
-			b.MouseLeave:Connect(function() b.BackgroundTransparency = 1; tip.Visible = false end)
+			b.MouseLeave:Connect(function() hovering = false; paint(); tip.Visible = false end)
 			b.Activated:Connect(function()
 				tip.Visible = false
 				task.defer(function()
 					local ok, err = xpcall(app.open, debug.traceback)
+					paint()
 					if not ok then warn("[delve] couldn't open " .. app.name .. ": " .. tostring(err)) end
 				end)
 			end)
@@ -8011,6 +8170,7 @@ end
 
 do
 	local RIBBON_PNG = {
+		clickselect = { [24] = "\137\080\078\071\013\010\026\010\000\000\000\013\073\072\068\082\000\000\000\024\000\000\000\024\008\006\000\000\000\224\119\061\248\000\000\000\180\101\088\073\102\073\073\042\000\008\000\000\000\006\000\018\001\003\000\001\000\000\000\001\000\000\000\026\001\005\000\001\000\000\000\086\000\000\000\027\001\005\000\001\000\000\000\094\000\000\000\040\001\003\000\001\000\000\000\002\000\000\000\019\002\003\000\001\000\000\000\001\000\000\000\105\135\004\000\001\000\000\000\102\000\000\000\000\000\000\000\072\000\000\000\001\000\000\000\072\000\000\000\001\000\000\000\006\000\000\144\007\000\004\000\000\000\048\050\049\048\001\145\007\000\004\000\000\000\001\002\003\000\000\160\007\000\004\000\000\000\048\049\048\048\001\160\003\000\001\000\000\000\255\255\000\000\002\160\004\000\001\000\000\000\024\000\000\000\003\160\004\000\001\000\000\000\024\000\000\000\000\000\000\000\160\055\177\011\000\000\000\009\112\072\089\115\000\000\011\019\000\000\011\019\001\000\154\156\024\000\000\002\171\073\068\065\084\072\137\229\149\221\075\020\081\024\198\183\254\128\186\140\101\047\022\137\140\032\047\150\176\015\176\239\011\033\251\128\046\187\232\046\017\138\064\050\012\175\036\137\212\050\132\046\186\081\146\200\032\089\179\027\023\035\204\052\215\239\176\086\217\028\020\221\029\055\093\215\221\153\157\057\231\125\207\153\029\199\137\035\045\136\184\235\199\122\017\244\194\115\049\103\158\249\061\231\188\012\239\113\056\254\165\066\196\051\136\120\110\207\193\156\243\035\136\172\147\049\110\011\145\036\031\050\012\163\032\103\176\109\219\007\024\099\207\017\152\073\052\198\199\059\204\233\209\054\083\210\085\158\002\096\150\166\242\087\182\109\031\220\013\120\031\034\222\070\228\075\008\108\117\118\044\181\216\254\208\242\183\150\218\061\066\222\007\246\183\169\190\212\060\000\091\005\202\117\000\094\110\219\246\254\109\193\001\082\039\016\249\160\104\069\044\196\147\159\027\086\190\167\193\027\213\085\107\141\046\078\027\201\181\182\169\236\023\000\156\206\010\039\004\170\017\153\165\037\056\014\189\053\131\239\202\054\007\175\151\240\012\183\154\193\100\156\027\226\180\090\194\168\201\178\123\100\098\055\017\073\015\124\168\178\250\182\130\167\245\241\145\229\151\039\140\121\241\173\096\100\012\016\006\089\142\196\116\157\152\186\078\249\100\055\244\191\191\103\247\102\002\139\119\001\159\041\017\029\057\165\144\090\094\142\135\004\035\107\128\215\219\241\181\184\184\228\133\223\063\244\083\060\043\009\162\140\180\241\254\141\240\254\166\149\064\050\198\084\225\009\135\229\129\251\229\021\183\070\070\198\090\182\021\224\116\186\171\133\042\042\042\091\066\033\057\042\214\023\067\218\244\167\122\171\207\087\099\013\047\076\241\181\118\196\227\074\184\229\077\107\229\033\151\251\130\208\142\003\132\242\242\142\062\110\110\126\221\169\170\042\082\010\022\080\180\008\161\090\119\079\111\099\254\177\130\203\105\248\174\003\156\127\085\088\120\182\078\150\035\203\145\200\239\165\171\055\110\094\091\015\222\147\000\167\211\093\029\012\074\115\146\052\051\179\025\252\063\009\000\064\099\124\060\032\121\060\039\159\238\052\160\248\202\245\146\112\088\030\004\064\200\024\128\200\171\196\168\080\020\085\107\108\124\217\225\114\229\109\025\224\114\031\190\232\243\117\213\017\066\019\136\108\133\082\172\116\100\043\074\013\015\000\243\139\163\206\206\205\069\202\202\238\054\101\010\120\082\091\127\039\026\141\077\008\047\034\142\002\192\041\199\206\198\053\139\002\224\234\192\192\240\143\162\162\075\207\210\001\226\055\013\004\038\219\001\208\018\030\198\088\233\182\199\245\038\023\078\003\000\154\154\166\209\120\060\065\021\069\213\009\033\058\034\075\137\203\072\120\028\185\022\231\060\031\145\249\210\087\038\034\255\098\024\198\241\156\193\027\011\017\207\011\237\057\056\151\250\003\190\072\043\061\180\159\115\044\000\000\000\000\073\069\078\068\174\066\096\130", [48] = "\137\080\078\071\013\010\026\010\000\000\000\013\073\072\068\082\000\000\000\048\000\000\000\048\008\006\000\000\000\087\002\249\135\000\000\000\180\101\088\073\102\073\073\042\000\008\000\000\000\006\000\018\001\003\000\001\000\000\000\001\000\000\000\026\001\005\000\001\000\000\000\086\000\000\000\027\001\005\000\001\000\000\000\094\000\000\000\040\001\003\000\001\000\000\000\002\000\000\000\019\002\003\000\001\000\000\000\001\000\000\000\105\135\004\000\001\000\000\000\102\000\000\000\000\000\000\000\072\000\000\000\001\000\000\000\072\000\000\000\001\000\000\000\006\000\000\144\007\000\004\000\000\000\048\050\049\048\001\145\007\000\004\000\000\000\001\002\003\000\000\160\007\000\004\000\000\000\048\049\048\048\001\160\003\000\001\000\000\000\255\255\000\000\002\160\004\000\001\000\000\000\048\000\000\000\003\160\004\000\001\000\000\000\048\000\000\000\000\000\000\000\013\131\078\081\000\000\000\009\112\072\089\115\000\000\011\019\000\000\011\019\001\000\154\156\024\000\000\004\249\073\068\065\084\104\129\237\153\123\076\091\085\028\199\239\230\235\095\077\140\184\040\018\135\153\147\248\074\230\204\102\034\081\100\193\097\226\146\025\031\127\056\093\052\018\178\103\022\157\070\144\012\230\204\230\212\200\198\102\070\054\227\066\160\056\006\065\212\068\216\130\084\040\005\198\176\188\054\030\237\152\060\090\040\045\180\183\247\222\223\239\244\113\057\230\006\110\228\030\074\024\165\045\204\244\155\124\147\054\233\077\063\223\115\126\247\119\206\061\151\227\098\138\105\101\138\016\178\013\017\043\000\176\010\000\118\080\074\087\115\183\131\008\033\143\003\144\063\016\009\213\026\219\000\096\051\183\082\229\114\209\123\017\241\024\000\122\231\194\079\027\000\167\016\073\145\032\008\015\112\043\069\148\210\213\136\248\017\034\025\159\013\043\137\056\213\091\239\027\238\190\228\251\071\244\160\204\204\198\036\034\238\161\148\222\185\172\240\146\228\219\136\072\154\216\145\182\245\121\093\213\071\229\043\037\025\180\078\241\047\217\178\113\160\213\055\022\100\070\122\016\113\075\212\193\069\081\092\003\064\010\001\180\035\235\030\039\164\089\231\239\081\193\089\215\157\014\180\059\071\136\024\036\200\111\000\240\072\196\193\041\165\119\017\066\246\003\032\063\027\064\240\160\220\243\167\111\176\108\063\173\159\015\094\245\207\187\168\222\084\233\055\123\220\024\096\066\136\136\152\075\041\189\039\034\240\136\152\010\128\215\216\209\027\234\242\058\127\205\145\155\022\002\103\093\249\249\116\089\001\204\153\141\126\066\200\214\112\130\063\166\076\049\011\062\097\035\146\254\076\160\099\177\224\172\107\079\004\076\142\033\034\004\043\043\068\124\052\100\112\165\067\032\226\151\108\091\244\184\208\111\170\244\247\151\238\162\250\165\194\151\204\184\084\045\043\023\250\053\033\036\004\000\146\021\210\034\136\136\095\177\061\220\210\228\179\086\028\148\013\225\002\047\097\092\113\080\110\180\052\251\070\231\150\021\057\020\066\000\109\095\183\245\122\007\047\030\160\013\145\130\047\153\177\242\031\195\221\094\039\083\082\099\161\004\152\179\146\010\060\240\109\229\254\191\117\153\225\007\215\101\210\186\150\082\127\047\063\065\130\174\228\097\009\160\218\101\199\161\218\147\129\214\112\193\095\250\086\190\058\054\224\213\180\230\176\006\056\126\252\251\139\118\251\184\155\189\039\070\174\227\117\101\149\013\021\188\042\091\054\222\108\243\218\217\154\119\187\121\123\069\101\085\094\216\002\172\089\147\144\155\148\244\244\017\157\174\236\050\207\123\052\083\044\138\064\250\027\124\093\183\178\136\169\046\219\075\255\106\255\221\127\067\224\181\093\071\020\037\098\050\181\235\146\083\182\108\141\123\040\225\165\176\006\080\157\154\250\234\119\141\141\205\029\051\059\203\255\218\171\027\038\175\148\250\219\023\186\063\012\231\002\157\046\059\001\182\068\006\007\135\140\153\187\247\189\163\128\171\142\072\000\213\025\025\123\206\090\044\003\195\044\136\115\132\088\106\190\150\091\088\240\234\099\114\235\168\217\235\098\127\239\112\056\251\079\157\250\097\223\108\240\168\004\080\028\031\159\152\151\159\095\080\233\116\078\104\054\104\146\004\083\067\093\190\030\165\175\087\124\044\027\148\109\181\036\049\051\038\136\188\190\222\080\176\118\093\082\074\048\248\168\004\080\189\097\195\166\163\213\213\053\070\065\016\053\187\083\193\035\073\030\183\118\037\023\069\201\223\209\209\117\033\045\253\245\215\230\003\143\122\000\213\219\183\191\125\210\100\234\236\155\175\021\142\140\216\174\126\113\232\240\206\133\192\227\150\043\128\234\156\156\220\018\155\109\116\082\189\126\098\098\210\250\083\081\241\167\183\010\030\183\220\001\020\151\151\087\234\213\235\027\155\154\138\023\011\031\023\011\128\177\025\208\199\074\008\099\055\049\249\127\116\161\248\248\196\188\104\007\088\187\046\041\101\169\001\236\234\197\003\003\003\214\204\204\221\231\162\021\160\160\224\244\094\135\195\105\158\021\192\026\066\000\204\101\031\096\026\026\140\166\228\228\087\190\137\084\128\119\223\255\224\013\179\217\114\153\221\170\043\039\019\139\014\160\028\101\000\144\108\000\212\236\221\093\046\055\057\127\190\184\058\049\241\137\195\225\010\240\212\179\207\165\214\027\026\207\008\130\040\049\131\038\002\144\079\040\165\171\184\080\037\073\210\195\202\145\056\187\049\179\090\109\206\172\172\156\226\165\006\040\060\251\227\001\135\195\121\115\158\243\210\004\046\092\066\196\151\001\176\155\253\035\101\247\153\158\190\045\127\177\001\118\126\152\241\166\217\114\163\038\008\120\047\034\166\113\209\060\220\229\121\193\175\000\175\095\255\228\145\133\002\108\220\252\098\154\193\216\092\040\008\162\166\052\001\208\013\064\062\163\148\222\205\069\090\162\040\062\024\236\120\125\108\108\156\087\158\208\230\011\080\082\122\033\203\229\114\219\230\121\107\019\199\069\091\000\240\130\242\238\139\045\131\206\206\107\102\163\177\165\067\253\222\215\215\095\059\060\060\210\058\247\033\007\091\037\073\218\196\045\167\166\187\021\188\055\123\221\088\216\056\161\148\034\165\244\014\110\165\200\237\166\247\001\224\009\000\237\139\011\166\092\148\146\043\242\120\060\247\115\043\085\094\175\247\025\068\082\031\100\212\091\036\201\247\060\119\059\136\082\186\010\192\251\022\034\150\034\162\078\249\188\164\197\040\166\152\184\136\233\095\150\221\225\165\184\077\077\152\000\000\000\000\073\069\078\068\174\066\096\130", [72] = "\137\080\078\071\013\010\026\010\000\000\000\013\073\072\068\082\000\000\000\072\000\000\000\072\008\006\000\000\000\085\237\179\071\000\000\000\180\101\088\073\102\073\073\042\000\008\000\000\000\006\000\018\001\003\000\001\000\000\000\001\000\000\000\026\001\005\000\001\000\000\000\086\000\000\000\027\001\005\000\001\000\000\000\094\000\000\000\040\001\003\000\001\000\000\000\002\000\000\000\019\002\003\000\001\000\000\000\001\000\000\000\105\135\004\000\001\000\000\000\102\000\000\000\000\000\000\000\072\000\000\000\001\000\000\000\072\000\000\000\001\000\000\000\006\000\000\144\007\000\004\000\000\000\048\050\049\048\001\145\007\000\004\000\000\000\001\002\003\000\000\160\007\000\004\000\000\000\048\049\048\048\001\160\003\000\001\000\000\000\255\255\000\000\002\160\004\000\001\000\000\000\072\000\000\000\003\160\004\000\001\000\000\000\072\000\000\000\000\000\000\000\032\047\073\254\000\000\000\009\112\072\089\115\000\000\011\019\000\000\011\019\001\000\154\156\024\000\000\007\088\073\068\065\084\120\156\237\156\121\108\020\085\028\199\071\197\035\106\140\183\025\009\105\020\162\130\049\038\130\018\141\168\196\170\136\022\148\008\241\008\068\145\032\150\075\138\007\081\212\082\209\162\064\160\105\098\060\003\225\040\182\020\138\220\151\020\010\133\002\109\161\007\180\069\216\094\116\233\046\219\157\217\217\153\223\239\205\030\060\243\236\066\154\101\231\237\066\183\221\221\118\190\201\247\143\118\155\190\055\159\121\191\119\252\222\123\043\008\166\076\153\050\101\234\127\073\018\189\221\237\118\223\219\254\147\169\075\002\208\199\034\226\049\068\066\153\001\136\005\017\167\083\074\251\008\189\089\132\144\071\000\200\246\139\096\130\013\128\181\136\248\138\208\219\036\203\244\014\000\204\002\064\175\017\156\032\080\155\000\032\073\232\233\162\148\094\011\000\019\016\137\045\018\048\065\144\052\068\076\167\148\222\036\244\068\001\192\176\142\253\076\040\055\085\233\142\211\135\060\086\000\188\192\001\117\138\016\242\170\208\083\164\105\218\253\136\100\005\239\161\219\172\004\246\255\238\171\092\061\153\022\050\239\248\209\095\218\106\209\229\112\097\135\136\015\010\137\042\074\233\013\132\144\153\000\168\024\061\164\219\133\190\234\029\158\250\220\105\116\223\069\056\023\157\051\133\022\150\228\120\107\092\109\068\231\064\210\089\095\070\041\189\085\072\036\017\066\082\000\200\025\227\007\035\180\225\184\110\255\251\043\255\193\096\048\193\094\059\139\238\175\045\242\052\107\170\113\011\068\036\103\089\223\038\196\187\008\033\015\001\224\022\094\104\216\027\137\178\123\137\175\060\028\152\096\111\253\206\127\184\165\070\111\227\135\029\217\163\235\250\163\066\188\137\082\122\011\027\097\000\144\024\134\147\132\158\099\005\222\127\215\076\161\123\175\020\078\071\031\248\195\087\041\219\009\114\194\206\019\008\187\219\226\001\204\053\129\097\251\156\081\133\089\104\156\062\228\105\089\055\219\127\160\051\096\058\058\119\006\045\098\125\151\234\070\063\167\069\089\089\221\088\029\099\002\071\211\060\131\017\073\049\175\201\091\235\116\105\123\166\255\072\180\192\004\123\075\134\191\164\185\090\119\240\231\080\120\068\211\060\079\117\027\024\151\203\117\087\096\022\108\248\246\100\059\033\108\004\234\042\048\161\194\206\217\202\013\059\086\215\021\138\162\220\221\197\179\096\146\006\128\046\163\138\168\010\250\170\182\121\045\121\211\047\031\182\187\218\172\076\022\118\110\133\027\118\118\068\252\048\234\097\071\041\189\014\000\055\242\154\114\227\049\221\182\097\174\255\080\119\131\009\246\166\111\252\135\154\042\245\243\097\194\046\135\061\083\212\000\001\144\052\163\194\206\055\017\117\079\182\239\088\172\193\004\123\223\047\190\138\054\043\209\056\144\082\163\008\008\171\067\206\105\026\136\043\111\038\045\138\053\012\195\176\155\073\139\206\055\018\183\065\191\116\060\154\128\116\163\055\225\114\144\182\003\127\250\170\098\013\035\084\199\205\214\120\156\142\155\068\013\016\114\227\185\221\173\103\116\107\087\014\233\145\122\075\134\255\112\248\161\191\221\221\010\008\217\091\209\208\119\230\176\167\126\253\231\209\155\020\070\234\252\217\116\127\205\030\079\163\166\114\071\177\238\001\100\181\158\107\083\085\205\176\034\170\066\212\178\117\222\218\206\046\043\034\049\043\163\044\223\091\167\056\137\199\168\062\154\006\062\167\083\106\233\054\064\249\249\005\123\199\142\125\055\187\162\162\234\020\239\013\073\118\226\096\163\073\087\193\097\163\167\081\039\220\225\101\150\103\204\207\156\120\228\072\233\242\110\005\036\138\073\233\204\243\230\205\207\177\090\207\057\121\149\108\169\209\207\110\252\214\095\018\045\048\044\077\098\057\234\105\229\149\041\203\046\219\230\205\091\127\184\175\111\210\011\204\049\003\036\138\073\233\253\251\015\204\088\190\124\229\054\089\118\025\174\230\053\013\189\167\246\123\234\243\103\093\253\180\224\210\034\149\051\091\118\187\085\100\048\006\063\245\204\203\023\225\196\028\144\024\240\240\225\047\045\042\044\220\087\170\105\096\152\220\114\203\196\085\186\214\091\203\050\134\145\130\097\127\123\112\153\175\058\076\154\227\130\197\210\080\056\233\163\212\113\029\193\196\021\032\049\224\137\019\063\254\181\174\238\116\019\047\004\028\205\196\182\107\137\175\044\028\156\029\063\249\075\091\207\240\243\211\054\155\189\054\043\043\123\106\040\048\113\009\072\020\147\210\251\246\125\032\125\193\130\197\121\054\155\093\230\189\245\198\114\079\253\250\057\254\226\096\048\027\230\248\139\089\030\137\151\236\087\020\183\099\215\174\127\022\037\245\127\120\056\015\078\092\002\018\003\030\052\232\241\239\217\223\043\138\219\112\147\080\083\145\156\216\233\057\205\146\247\127\165\210\189\044\243\232\150\141\055\021\085\085\243\086\086\086\175\075\030\241\218\200\112\096\226\030\144\024\112\074\202\152\172\178\178\242\026\094\168\072\231\137\067\106\053\094\030\048\055\052\052\021\077\155\153\246\078\164\096\018\006\144\024\240\167\159\126\177\188\161\161\137\059\068\135\236\179\028\206\198\101\043\086\125\126\165\096\018\014\144\040\038\165\247\235\215\127\222\210\165\217\005\109\109\078\078\058\226\210\176\173\236\045\058\144\253\208\192\199\094\188\090\056\009\007\072\012\120\200\144\103\023\236\220\185\187\036\212\178\133\045\015\078\212\212\110\026\051\102\220\027\157\001\147\208\128\196\128\051\051\023\230\005\151\145\151\191\254\155\104\128\233\017\128\210\210\062\187\172\242\063\255\242\219\039\038\032\209\004\148\110\182\032\209\012\049\193\236\131\204\078\186\115\066\115\020\051\001\117\074\104\182\032\019\080\167\132\102\011\226\011\130\078\196\159\060\089\087\159\156\060\098\113\162\044\053\166\076\157\241\182\181\213\086\213\241\255\003\032\070\019\080\101\240\003\184\092\138\158\147\147\183\107\192\128\065\223\197\043\160\039\159\030\246\010\091\164\170\170\022\098\183\005\075\163\006\008\017\167\025\229\107\090\090\172\142\185\115\191\093\021\111\128\214\228\174\253\090\146\100\195\179\147\236\032\085\084\079\151\033\226\106\094\098\171\188\252\120\237\232\209\111\101\197\026\208\023\095\206\157\208\220\124\246\040\175\174\000\228\183\174\056\101\118\013\163\222\126\140\045\116\193\044\049\095\080\176\113\031\075\212\119\055\160\225\201\035\070\086\084\084\174\097\009\253\048\039\095\223\019\186\250\086\032\132\185\202\100\179\057\020\150\082\101\091\063\221\001\104\245\154\220\047\037\073\182\197\213\217\105\210\126\025\110\007\175\041\179\209\110\252\248\247\127\238\042\064\025\243\051\039\089\207\217\042\226\250\244\061\033\036\005\145\052\024\085\144\229\155\217\118\244\208\161\195\126\140\022\160\017\175\143\078\097\251\098\154\006\188\179\064\205\113\115\127\131\082\122\115\224\042\130\225\222\185\211\041\001\059\224\192\118\052\174\022\016\219\065\101\039\054\020\197\045\037\228\013\032\068\028\208\126\143\203\184\201\091\044\022\107\106\234\244\063\174\020\208\130\159\022\127\212\106\179\159\232\017\119\200\016\049\025\000\079\114\030\228\066\113\113\073\197\115\207\189\184\048\028\160\081\163\222\028\197\194\137\119\178\063\112\011\113\164\144\072\162\148\094\031\238\066\157\036\201\200\102\227\115\230\124\189\050\248\179\223\255\092\054\155\109\024\042\138\091\141\224\030\235\141\066\162\010\000\250\033\098\046\047\052\156\078\233\178\029\086\197\173\026\094\121\104\063\241\129\171\053\077\235\043\244\020\001\192\243\000\200\029\146\035\049\000\214\032\226\075\066\079\020\165\180\015\034\078\070\036\142\171\000\035\177\144\237\021\223\198\032\203\244\206\192\108\220\023\001\024\118\128\106\069\175\252\078\015\085\213\159\064\036\007\141\001\097\041\000\060\045\244\102\209\246\076\193\007\000\088\215\161\213\212\177\223\177\207\098\093\191\184\146\162\040\247\048\199\186\030\166\076\153\050\037\196\137\254\003\076\091\060\208\226\152\226\141\000\000\000\000\073\069\078\068\174\066\096\130" },
 		explorer = { [24] = "\137PNG\013\010\026\010\000\000\000\013IHDR\000\000\000\024\000\000\000\024\008\006\000\000\000\224w=\248\000\000\000\180eXIfII*\000\008\000\000\000\006\000\018\001\003\000\001\000\000\000\001\000\000\000\026\001\005\000\001\000\000\000V\000\000\000\027\001\005\000\001\000\000\000^\000\000\000(\001\003\000\001\000\000\000\002\000\000\000\019\002\003\000\001\000\000\000\001\000\000\000i\135\004\000\001\000\000\000f\000\000\000\000\000\000\000H\000\000\000\001\000\000\000H\000\000\000\001\000\000\000\006\000\000\144\007\000\004\000\000\0000210\001\145\007\000\004\000\000\000\001\002\003\000\000\160\007\000\004\000\000\0000100\001\160\003\000\001\000\000\000\255\255\000\000\002\160\004\000\001\000\000\000\024\000\000\000\003\160\004\000\001\000\000\000\024\000\000\000\000\000\000\000\1607\177\011\000\000\000\009pHYs\000\000\011\019\000\000\011\019\001\000\154\156\024\000\000\000\246IDATH\137\213\149AJ\003A\016E\251\002\185\129\007I\092e\145+\004\162\167pa\008\130\144!\139\224Z\188\1307\200B\227\034\023\016w\179\200\214\011\184\177\254\175\129@\135\150\136L\211\142\147\233\158Q?\252m\189\238_E\1491]\200Z\219\019\209\011@g\190I\014\163\001\128^\146jC\006\248\030\013 \153\185bW\203\251\146\0316/\031\144\206\000\000\006\161\024\003\158\138\200I\003\128\222~\023\165\023\235\014(\198\221E\004\232\220\021Z\173\159K\206\183\175\169\0008\005\240\022\250\174\008V&\165>\227JZ\244_\000\000\189\003\244\233\224G7\210\149\000\146\163\227\236\247\143\217\015\128X3\251\221\031\152\200\030\136H?)\160\182\254,\000`\238-\187I%\160\230Z\158}]\190\154M\006\1383\247\130\214\198\180\169\224=\010\208\235\198\197\194\128\226\156\228\205\193\139\210EkS{,9\012r\139\206\217\193\000\000\000\000IEND\174B`\130", [48] = "\137PNG\013\010\026\010\000\000\000\013IHDR\000\000\0000\000\000\0000\008\006\000\000\000W\002\249\135\000\000\000\180eXIfII*\000\008\000\000\000\006\000\018\001\003\000\001\000\000\000\001\000\000\000\026\001\005\000\001\000\000\000V\000\000\000\027\001\005\000\001\000\000\000^\000\000\000(\001\003\000\001\000\000\000\002\000\000\000\019\002\003\000\001\000\000\000\001\000\000\000i\135\004\000\001\000\000\000f\000\000\000\000\000\000\000H\000\000\000\001\000\000\000H\000\000\000\001\000\000\000\006\000\000\144\007\000\004\000\000\0000210\001\145\007\000\004\000\000\000\001\002\003\000\000\160\007\000\004\000\000\0000100\001\160\003\000\001\000\000\000\255\255\000\000\002\160\004\000\001\000\000\0000\000\000\000\003\160\004\000\001\000\000\0000\000\000\000\000\000\000\000\013\131NQ\000\000\000\009pHYs\000\000\011\019\000\000\011\019\001\000\154\156\024\000\000\0018IDATh\129\237\153MN\1950\016F\231.p\001\184\026\149\016\018\236h\197E\184O\202\0188\005\138\190\231,\010\200\202\130,\210\230\167q2\161~\210\172\154\180~\154\241x\146\154e2\211Q\150\213\173\196^\226\027\194OW\196\235$\138x\159y@\162\232\179\240\022\145\194< q\024)p0\015\208X\212\195\238\1813\154\215\155\007\200\002\255(\003\192\181\020>\199\236)\142\239\181\010\216\206\034 \133\187)\023\207\159\196\215\156\025\248H\144\129\231Y\004\022\129,\1760\140\175M\031'\177\196\219\170g\161\178\158F\007I\196\233\181,\171\027\243\012\222\186\205P\178\192\210\144K\168?\212#\200F\010\247-\177\137\159\187\222\196\234\152`%\222]\011\208\163u\159\245\165GR;Y\144Z\192C\216\133\011\240\1466BZ\129\1937\159\241[\172Q@\029\143\161+h\163\196\131\236\169\173\188\164\240\008\092\185\022HB\022X\026r\009\245\007\216\213/\176F\188Z\244\209Fi]|C\034\092\246A\134\131\176\169\211\234^\000\216z\1460\207\176v\001\165\232Bs\194\137r\237\252\131#\147\177\193\252\002\137\139%\154&f\213Y\000\000\000\000IEND\174B`\130", [72] = "\137PNG\013\010\026\010\000\000\000\013IHDR\000\000\000H\000\000\000H\008\006\000\000\000U\237\179G\000\000\000\180eXIfII*\000\008\000\000\000\006\000\018\001\003\000\001\000\000\000\001\000\000\000\026\001\005\000\001\000\000\000V\000\000\000\027\001\005\000\001\000\000\000^\000\000\000(\001\003\000\001\000\000\000\002\000\000\000\019\002\003\000\001\000\000\000\001\000\000\000i\135\004\000\001\000\000\000f\000\000\000\000\000\000\000H\000\000\000\001\000\000\000H\000\000\000\001\000\000\000\006\000\000\144\007\000\004\000\000\0000210\001\145\007\000\004\000\000\000\001\002\003\000\000\160\007\000\004\000\000\0000100\001\160\003\000\001\000\000\000\255\255\000\000\002\160\004\000\001\000\000\000H\000\000\000\003\160\004\000\001\000\000\000H\000\000\000\000\000\000\000 /I\254\000\000\000\009pHYs\000\000\011\019\000\000\011\019\001\000\154\156\024\000\000\002AIDATx\156\237\156;\138\021A\020\134\235\162 \226\002F\019]\128\137\204\172@p\001\138\152\221P\019\017E\003\135I\198\009DL\156]\140+0\016\013\140} \138\0150\021'2\016\237\170\255?\237\235HsQ\179\219\183_tu\213\249\224\143\155\2508U}\170\187\186\1573\012\195\136\144\178,O\146\188\012\200f\135\220\012A\206\171\234!\151\018\128\220\000\248\131\020\237#\000\223z\239\143\186T*\167O9\252\023\238\185\020 y\165\1279R\229\179K\001\146;\003\009R\151\170\160\173;{\141\243\240\201K\019\180e\130\196*\200\166\216D\214 U=B\242R\199\198\180UD\228*\128\019\209\010R\213\131$\159\015u\247\092\177\153\253\178\146\1641\004y_\158\026S\206\223\136\200\181(\005\021E\177\006\176\028[P\008r6JA\021\000\230\164|\026iz}%yOUg\174\014k\020k0A5\152\160\026LP\011A\015\030\189h\156w\031>6Z\164'\003 \183\006\186S\252t)\000\148\023\006\018\244\198\165\128\170\030\006\248\190\127A\152\187T\240\222\031#y\031\224\183\030*\231uRr\218.\228\206\248\143\009\170\129VA&\168\019\180\0102AYTPQ\020k$O\147<\179,!|\223P\213\003Y\009\0020o\246\148\146\207\170\023\007\217\008\034e\191yc\203\1399\009\210\022\130vz\1868MPSA\128<\142)\209U\016\147\136\009R\019\196H+\008\017\172;Q\175A.2LP\013&\168\134v\239\2493\234\164\209|/\2464\171\189X\147\221\188\247\229zv\187\249Q\161\0092A\157\160U\144\009\234\004\173\130\166/\200\251r}q.\128\191W<\196\185\187\210!\206T\004\001|5\2001\224\132\004\253j*\008\144\237l\0041\182\199\029\024\225#\148e\137N\016\147HO\130\000\217\030\1270\017\011\010A\206\141?\152\136\005\169\234\172\234\027\022\253\195\216\131\138P\208\0200A5\152\160\026\218L\255\016\228\186\203\005\146\187-\190Y=\238rAUg\213\222\138\228m\146w\151e\241\183\155\140\228\024\134\225\166\194\031.Ta\195\193$\010\011\000\000\000\000IEND\174B`\130" },
 		properties = { [24] = "\137PNG\013\010\026\010\000\000\000\013IHDR\000\000\000\024\000\000\000\024\008\006\000\000\000\224w=\248\000\000\000\180eXIfII*\000\008\000\000\000\006\000\018\001\003\000\001\000\000\000\001\000\000\000\026\001\005\000\001\000\000\000V\000\000\000\027\001\005\000\001\000\000\000^\000\000\000(\001\003\000\001\000\000\000\002\000\000\000\019\002\003\000\001\000\000\000\001\000\000\000i\135\004\000\001\000\000\000f\000\000\000\000\000\000\000H\000\000\000\001\000\000\000H\000\000\000\001\000\000\000\006\000\000\144\007\000\004\000\000\0000210\001\145\007\000\004\000\000\000\001\002\003\000\000\160\007\000\004\000\000\0000100\001\160\003\000\001\000\000\000\255\255\000\000\002\160\004\000\001\000\000\000\024\000\000\000\003\160\004\000\001\000\000\000\024\000\000\000\000\000\000\000\1607\177\011\000\000\000\009pHYs\000\000\011\019\000\000\011\019\001\000\154\156\024\000\000\001qIDATH\137\205\149?K\003A\016\197\163\133\165M\190\128 \248\001\004\193\210B\252\018\218\166\020c\163\216\165\018\027\027AA\176\018\210X\133 \0184\018\255a\192\028\152\016%\234\153bI\225E\140\228Bv\222j\225\202\230P\207\196\028a\189C\007^\179\197\252\1527\143\217P\232/JJ9\008`\150H,\234\137f\164\148}]\001Db\011\016\2427\034\162i/@FI\215\001\007\130\152\219\146~\198\172\168Q\184O\230\242\230^\237\185Q\243\021\192\152\021\237\028\209G@\225\170\156R\143K\203\241\150Jf\229\019@$6\028 \026\000\134\213\027\231\175c\000&\221\178m;\220\021`\228\205#\015@\230k2L\008!F~^,\226\186\128\245@'\208\169\255\005\000\016!\018\007DH\184m\240\013@mK\0060\228\236\163#\214k\154\000$?\1544\155/\163R\202\001\034\177\000`\197-\206\249\184\022\192\182\237\176J\137J\142\175;\000\196q\175\013u\001'A\003\206\002\003\156\231n\164\175\255\129\209\006\136\173\238\200D\234B\166O\011\158\202\229\205V\179\135\199Z\218\157(\213\252\219\143\214~M{\213\230\246~\011\1445n#\158\1581f\205\235Z\1939\189\213\235\206\017\236Zj\028V\177\230\138%vxY,g{\213\245\029\219\173V\159\166t\195\224K\189\003-\196\023\207\026\237\188\209\000\000\000\000IEND\174B`\130", [48] = "\137PNG\013\010\026\010\000\000\000\013IHDR\000\000\0000\000\000\0000\008\006\000\000\000W\002\249\135\000\000\000\180eXIfII*\000\008\000\000\000\006\000\018\001\003\000\001\000\000\000\001\000\000\000\026\001\005\000\001\000\000\000V\000\000\000\027\001\005\000\001\000\000\000^\000\000\000(\001\003\000\001\000\000\000\002\000\000\000\019\002\003\000\001\000\000\000\001\000\000\000i\135\004\000\001\000\000\000f\000\000\000\000\000\000\000H\000\000\000\001\000\000\000H\000\000\000\001\000\000\000\006\000\000\144\007\000\004\000\000\0000210\001\145\007\000\004\000\000\000\001\002\003\000\000\160\007\000\004\000\000\0000100\001\160\003\000\001\000\000\000\255\255\000\000\002\160\004\000\001\000\000\0000\000\000\000\003\160\004\000\001\000\000\0000\000\000\000\000\000\000\000\013\131NQ\000\000\000\009pHYs\000\000\011\019\000\000\011\019\001\000\154\156\024\000\000\001\211IDATh\129\237\1531K\195@\020\199S\135~\007g\251\021\244\195hwgu\144n\157J\029\172 \206n\142v,\157\140\139\224\160\162\130K[\004\007+H\1771\189\188\255\181\131O\014\017\018\188\1446i\147\020\239\015oHH\194\251\221\189w\255\007\177,#\163\244\228y\147\013@^\017a\012HN9^\001\212\153\185\024+y!\196*\128\143\012\018\231`\160\030\011\000\192v\246\201K\021oq\001\170\190U\168Z)\011>\136\152\0310\000\139\223\001f.\186\174h8\159\163QD#\229\179\132\092W\028Ny\018\228\019\192\137\092\249\156\003\192\247P\165v\022\136\182}\167\005\000P\034\146=\255\187?\215(-\005\000\145\172\232vI\221\255}\134\153W\136\168L$\247\163\131\202\204\092H\013 x\188\234\203L%5\139Y\017\209\150\001\168\204\183\132\010jU\213\028\019\021D\227\205\180KH5q7\152<:\000\214\1729\010\139\002HK0\000\182\217\129|\150\016kMJoF\185\004\160\016\147\210\153Q.\0010\133\019\235\230\165p\023\150\2189*\227QB\238\2056J\200\221\092\001\232\204.<yhM\208\244@;\252\020\2503\231\132\2053I\004\227\196\182q\226D\130)!\219\148P\034\225\223\151P\179u=\245(\176\224\232\199\026%j\199M\030:\163\172\147g\000\007\177\000T\156\156\182\184\247\220W\243J\022\201\191G\254b\138\002\152w\180}'\219\205}\2472Y\155g\012p\251\208\187Xj\128\167\206\203yb\000\215\245\188\172\154s0\024\238$\006\016\130\142\178H~$<O\253\198M\012\160:\092\008j\164\181\019D\248\026:\238\163\231M\214\019'odd\197\2107\028\129\245U\005\022\199\213\000\000\000\000IEND\174B`\130", [72] = "\137PNG\013\010\026\010\000\000\000\013IHDR\000\000\000H\000\000\000H\008\006\000\000\000U\237\179G\000\000\000\180eXIfII*\000\008\000\000\000\006\000\018\001\003\000\001\000\000\000\001\000\000\000\026\001\005\000\001\000\000\000V\000\000\000\027\001\005\000\001\000\000\000^\000\000\000(\001\003\000\001\000\000\000\002\000\000\000\019\002\003\000\001\000\000\000\001\000\000\000i\135\004\000\001\000\000\000f\000\000\000\000\000\000\000H\000\000\000\001\000\000\000H\000\000\000\001\000\000\000\006\000\000\144\007\000\004\000\000\0000210\001\145\007\000\004\000\000\000\001\002\003\000\000\160\007\000\004\000\000\0000100\001\160\003\000\001\000\000\000\255\255\000\000\002\160\004\000\001\000\000\000H\000\000\000\003\160\004\000\001\000\000\000H\000\000\000\000\000\000\000 /I\254\000\000\000\009pHYs\000\000\011\019\000\000\011\019\001\000\154\156\024\000\000\003\129IDATx\156\237\220\187O\020A\028\007\2405jL\020\163\209\194\222h\231\163 1\024\019Cag\227\031`ie\229\0034\1671Z\129\165X\152\016\011\019\195I|\004C\144#\130\136\198\168\196\007\028\130\193\000\203#r\008H\184\227\142\249\253f\137\230g\006-\128;w\216\189\221\219\215|\147_}3\159\204\237\206\204\238\172\166\169\168\168\168\132 \136\184\023\017\207\002\240\203A)\198\248y\198X\133\1710D\180\001\017o\002\224/DNA,\000l%\162\029\174\000\001\240K^w\208!\164g\142\227\016\209\022\000\204x\2219\167\138\177\165#\142\0021\182T\238u\167\156\029E\252\130\163@\136X\153\255CX\169\005$\005\218~\195\225\031@\005d\022\005$I\228\129\024c\021\185\028\092\028\210\167\234{\146z\243\199\228pbe\013\233\169\238H^\131\210i\218\009\128\009{w\131\008\000\217\199\225\225\007\018\127\171\226\230\019\024n\160\197E\168V@&\025\029\159\186\183\022(V\019/X\245\247\219\2155\130\000\2244\034O\229\207\092\209\016k\160\133\133\133\221ZPFP\223W\189\205I\160\092.\183G@\152O\241\241\150\022\020\160\207}#]N\002\001\192\241u\172\129^\174m\007\017m\002\224\213\000\188\013\128wX-D\140\027\134q\208q\160O\201\225WN\002a\193\229H\030P\215\218v\008\156\226\174\133\2035MDe!\005\194\022\135\1820\202C\010\196\157\026A\219|\013\004\197]\131\170\138\184\0065\024\134q\192\172\175\190\000\202\133\237.\2304\208\138y\208\228\127\230A-\153\012\237\210\162\012\228\215( I\020\144$\010H\018\005$\137\002\010\018\016\231|?\034\158XY\000p\204l\173\020\025 \000~\199l9 \155\241\134\026\136/\143\028\217\154\009\027\180\168\002\161\205\197\170\216e\020\187\141\178e\138I\165\196\012>\180@\000Xg\019f\213RF\172\005C\009\132\136O\139\005\018e\024\198\225P\0021\198O\001\224\239\226\128\240\131\2166\2415\016\000\028]\007\208\243Bm\017/4\001\240k\226\021?\027u\134\136\182\154\245\213\023@DT&n\229\018\160*\205\131\248\002HD\204s\196S\134\002;\127b\183\176\138\1366jQ\006\242k\020\144$\010H\018\005$\137\002\146D\001I\162\128$Q@\146( I\020\144$\010\200k\160\186\187\173E\239\215\004\238\180\143\021\160\171\181\015h>\157\245\188c%=/f\005(V\019\167\166DwHF\015\182Hq\236\000]\169\137S\162\179\135\024C\207;i\191\176\145\136\182\187\002\020\251W\181\183\155\232a\243[j\127\157\164\023o\250JR\211\179\243\171\218\249s.\205\173\236:\254=\245l\241\024\166]\160\152\00758\252}U;\245\241\031i\205\237XyO:\022E\160/\003\163y'}b\001\001\026\155\152\153u\029H\183pV#\2303\160\212\212\220\168\235@\226\132\161\247w\021n\171\2303\217N\215\129\196\147H\175;\1386K|\005B+E\016\241q\240ppR\028%-\009\144\248\208\007\034>\010\016N\018\017\247i\165\142a\024\135\024c\231&&g\026\006\190Mt\244\246\235\239z\251\245\247^W\255\224X\231\200X\234I6\187x\157s~\146\1366\151\028GEEEEs?\127\000\187y\231\233\002\239x\223\000\000\000\000IEND\174B`\130" },
 		tags = { [24] = "\137PNG\013\010\026\010\000\000\000\013IHDR\000\000\000\024\000\000\000\024\008\006\000\000\000\224w=\248\000\000\000\180eXIfII*\000\008\000\000\000\006\000\018\001\003\000\001\000\000\000\001\000\000\000\026\001\005\000\001\000\000\000V\000\000\000\027\001\005\000\001\000\000\000^\000\000\000(\001\003\000\001\000\000\000\002\000\000\000\019\002\003\000\001\000\000\000\001\000\000\000i\135\004\000\001\000\000\000f\000\000\000\000\000\000\000H\000\000\000\001\000\000\000H\000\000\000\001\000\000\000\006\000\000\144\007\000\004\000\000\0000210\001\145\007\000\004\000\000\000\001\002\003\000\000\160\007\000\004\000\000\0000100\001\160\003\000\001\000\000\000\255\255\000\000\002\160\004\000\001\000\000\000\024\000\000\000\003\160\004\000\001\000\000\000\024\000\000\000\000\000\000\000\1607\177\011\000\000\000\009pHYs\000\000\011\019\000\000\011\019\001\000\154\156\024\000\000\001\179IDATH\137\189\149\177K\195P\016\198\163\131\155\224\160\131\131\014\162\147\254\009\130\005;\186u\176\127\128\130\008nJ\027\156\219:\233(\184\154@\235VqSG\007\007'7\151.N:\020b\184\239\130\216'\175\1661}}\175MS\237\193\013yI\190_\238r\220gY\227\008\207\243\230\136\248\144\136\011\204\188\149FC\0081\009`Gj\000\216\023BLE7\001\156\001,d\018\225\139\136\239\136\248\022@M>\008`\137\0087\242\204t\014\224\177\163\241\163\019\228#\000\017_\196o\002\252\016\190T5\0004\231x\238\214\192n\028p\020\171\224\163\217\0203\195\182\136\136\214\137\208\0105Z\0002\241\254M\016q\131\136\239\137h\193J\025A\016\172\002\252\010\224J\243\005x\001\224t\174\237\146\155\183K\206\187]v\133\154\197\178\243V,;\219\250J\186u\162\000\240D\196\231\191\000\189\184\029\131\232\000\170N\020\190\239\207\011!\166#@\092\176\228\214\011\0217W\172\184\217x\234\000\170\206`@\201\173\203kf^\001\144\213\228\166\231y\179\003\001=-\010\001\133\138\155\003\176L\132Oe\148c3\207\141\129-\234\249\201\017\2242#G\206$\222I\147\206\248\000PJ\147S\146\006\144x\138\228\156K\200\176\128\196S\164T\151\025\025`,\205j\239\153\141\145[d\2529V\219/f\229(\154\199\020\215}u\148e\183h\165\140 \008\214\180\203NY\215\254\159\175k2\027N-\169\163\2455\028\000\167\006\203\172&u\180\190\150\025\154\2541\128\147\017M\127Oj\0008\2322\253\255\140oM\034$\1349\165d\160\000\000\000\000IEND\174B`\130", [48] = "\137PNG\013\010\026\010\000\000\000\013IHDR\000\000\0000\000\000\0000\008\006\000\000\000W\002\249\135\000\000\000\180eXIfII*\000\008\000\000\000\006\000\018\001\003\000\001\000\000\000\001\000\000\000\026\001\005\000\001\000\000\000V\000\000\000\027\001\005\000\001\000\000\000^\000\000\000(\001\003\000\001\000\000\000\002\000\000\000\019\002\003\000\001\000\000\000\001\000\000\000i\135\004\000\001\000\000\000f\000\000\000\000\000\000\000H\000\000\000\001\000\000\000H\000\000\000\001\000\000\000\006\000\000\144\007\000\004\000\000\0000210\001\145\007\000\004\000\000\000\001\002\003\000\000\160\007\000\004\000\000\0000100\001\160\003\000\001\000\000\000\255\255\000\000\002\160\004\000\001\000\000\0000\000\000\000\003\160\004\000\001\000\000\0000\000\000\000\000\000\000\000\013\131NQ\000\000\000\009pHYs\000\000\011\019\000\000\011\019\001\000\154\156\024\000\000\002\214IDATh\129\237Y=h\020A\020^-lDP\016[K\011m\162\136`)\022j\165\133\130\246\010*(\138\144l\132\144\034{F\008\022\233ll\188\013\162\150*\010\006T\240\007lb\151\198F+\171\156\092\246}o\142$O\246\238\214\236\237\237\236\221\236\237\238\237\193}\240\224`\231\237}\223\204\219\153\143y\1505\198\024\217\129H]\002\2487\192\018\138?\000\174Z\005\162V\147}DxE\132F\192\195\255M\196\239\234\245\250\129\164$D\200\007\201\027D<C\196\147\225\000p:\252\014\017\217\013\224ft\156\249x\188\137\227\209\226\194\143c\005x^\227\184.I\2552l2\243\161\224\029D\188\152\229x\196\199W\141\000\239\196\136\008\248\150R\000\158\003\152\015\197\028\128S\209\146`\230[\145q\198\227\137\248\167\177\000\165\212\225\228\217\163\147VA\000\240,\225\027x\031\155$\034;\001\254\172Y\250\021\017\217U\160\1283\254\198\017\195c\139H]\214&\182w\133\239\145\178\185&\034{\172\130\225y\141cD|\191\179\156p\189g\034\017^\007\009\204|\174\016\182Y\242\233'az\238\233\209\169\138\251\201v\170lW\092\233+\156*\2519\147\015\150&\134*`\186I\190\170\250&\030\009?\215D\004e-\1609\243)\201\135D|\200Q\000/\198\029:\001\140\202&\161\156\250\023\192\137|\186\016\248\147\232\161\243_@\242\204\214m\167\250r\170\226>\180\029w>)\250\021 =\248\024#aV\151\238.\184\251\173\178\195\214\144\183DvXe\128l/Y\135\245\013\016W6\225\153'\162\131\204|[g\169u\225y|^b&\161\023\031\243\143\184K\128\251\034L\158\008\181\020\014S\218'\237#S>\198\219Vw\249\184\149\224\153\231\241\157\244\228\217'Y3\229\147\133\128\217\224\025\128\217A\004\000,c\0014^\001.y\0099\017+Q\190o\128\019\183\173.3\151\187\000\206\214\011\249V\184\195N\231,@\178\246B\129\008\219q?6\203)g\001\133\162\020\002\196\212{\228,@\178\246BE\011\160\172\189P\015\2413\131\144'\194\230\192|\006\017\224y|a@\001+C\021\224\251y\223\018\019\225\175!\241-\159\252\250\186\154\024\170\128<@&|\162W\139D\252d\200W\139\247\136\176\186\189Z\184\161Mh_\238~\209,\241\143\034/w\153\249l\194\229\238\149\216$\165\212\145\017\185^_N\213\224\240\203\169\192\030\217j\014\029\154\210\183\152\026\163\221\228\171\181\218\172\164\249\227\013\000\011\005\246\200\150\141\219\172\173\025Q\023\001\2545\236F\247\218\154\236m7\186U\164\209\253V\219\232\030c\012+\021\254\001\209\212S\013\203\004\170]\000\000\000\000IEND\174B`\130", [72] = "\137PNG\013\010\026\010\000\000\000\013IHDR\000\000\000H\000\000\000H\008\006\000\000\000U\237\179G\000\000\000\180eXIfII*\000\008\000\000\000\006\000\018\001\003\000\001\000\000\000\001\000\000\000\026\001\005\000\001\000\000\000V\000\000\000\027\001\005\000\001\000\000\000^\000\000\000(\001\003\000\001\000\000\000\002\000\000\000\019\002\003\000\001\000\000\000\001\000\000\000i\135\004\000\001\000\000\000f\000\000\000\000\000\000\000H\000\000\000\001\000\000\000H\000\000\000\001\000\000\000\006\000\000\144\007\000\004\000\000\0000210\001\145\007\000\004\000\000\000\001\002\003\000\000\160\007\000\004\000\000\0000100\001\160\003\000\001\000\000\000\255\255\000\000\002\160\004\000\001\000\000\000H\000\000\000\003\160\004\000\001\000\000\000H\000\000\000\000\000\000\000 /I\254\000\000\000\009pHYs\000\000\011\019\000\000\011\019\001\000\154\156\024\000\000\004JIDATx\156\237\092M\136\028E\020n\021=\024T\020\132\172\224E\212\155\138\146\139\010\034A\226UI\014J\162\023\245\178\146S\022\156N\014KH\1861+\137\193\255sv\026uAPP0Fv\241\231\2261\241fr\146h\132\004Yp\250\251^\143\209\146\218]p\210\153\158\174\238\169\158\238\158\169\015\222\173\247\171}_\215{U\243\186^y\158\131\131\131C\195\160\148\186\129\228\179\128\028\000\228\141A#\185_D\030\240Z\004\165\2126\000/\165}\2174\236[_Ww\021!\187\005\144\211\164\168,\003\2487\201\215\188\022@\191LR~\029\229\015)\151z\189\2281#B@\252\0282\181%\146\196\177<G\242\153a\150$\201#J\169\027\179\198\137\227\248\030\146;\179\254\222\030\143|o\232\207\207\166\002\173\154\016\210hPY\21132=\006\201\215\001^\1574O\158i\177\013\004\226Y[\003rcP\2173\200\175\148\186\009\224_u\241\140\178$I\030\174C\160\221\150\004\218=u\002\001\178\170\148\1869=\006\201\249\130!f\133g\226\002\001\242^\147\147t\028\203\243\214\005\034\249\1479)_\241\026\012\165\212\173\000\2551\245GD\030\204%\005\228}\179\217\195\127\147$y\200k8\000\1583\020\232\242\1760\030B\136{I\185h\016^\031x-\128\014?\128I\222\203\214;mc\210^\1757\151\222`\001\236\003r\134\228'\000\246z-\130\158\233:2\000\249&\189\171\006H\000O\021&\005x2\149o\254\244\166\000\214\252r\002U$\208\193\163\203s\157\176{\178\019v/\248A\212\247\195H\149\182 \234k\158N\024\157XXZ\217n2~U~Y!\242\131\238\147~\016]\025K\148L\177\186\151\015\029\249\248\137R\206\140\233\151\021\162\131G\151\231*\019g@\164qgRm\002\249A\244v\165\226\252/\210\241\178\226\148\241+\019$\151R\251\133K\163\158\223\2009\019\016\168\019v\127)+N\025\191F\017\237J\017\157\026\245\252\216\009\185@\226.+N\025\191F\002\192^\128\159\147<\166\148\186m\212\179%B\229\170\031D\231\253\160\251\131\031Dg\138Xi\135J\248e\013\190q\136D\023;a4\239\007+w{\179\004\223L\156\207\014\188uj\1557\139\240\013\196Y\092\092\204\172\235L=\252\156\176\154\202\153\131\205d\246\133^\026\149R\183\143!\208|\250y\165\212\029$\015\003\252RW\009,\216i@\2225\249\168Y\196\175\034\203\225r)\1296V\171k\019\178\022\007\144\011E\202\161\166\0060\142\227\254\014[~\021\217P\253QN\160\232\252\016\238\195U\1363P\204[\179\229\151\189\159\026afx\2538\132\251\171j\005bl\203\175\202\005\242\131\232\186\183\169\223p\149\002is\002\209\009\164\220\012\162\0111\229r\208\022\092\146fnE\177?S\171\152\181\138b\208,\129j\171(v\194\232DK\004\170\167\162\184\176\180\178]\127uh\186@E\253\178\138N\024=~\157H\013\020\168V,l\206\164\227\250\235\195F\226v\002\021\199L\207\160\153\018\0086*oCy\027\145\164'[Q,\130\134-\243\147\169(\022A\1956\138\147\169(\022\001 \223V)\142n\182i\245\0093@\222\169X\160\179\173\022\136\228}\182\219\008\174\021(y\161\245g\020\227\184\191C\231\034]`\183\021Vz\230\000\201\139\019\241\203\029\226\204\129\019h\0046\027D\228\187\140\131\228\159\234S\233\186\175\213k\009tC\012 \031f\029$'\249\1801\217V+\194o\2491/\031y-\128\238\2501lEx\217\136P\247`Xm\031\170\025\186\023\213\208\159+F\205,\174\029*\007\174\161n\178-\153km\234z\174\171\169w\207 \191\235z\230\212w=[\189X`\181M]\207\134\023\011HgF\175\1668\231\021\184\220\228k\131\203M^\245\166\231r\147\223{\189\228\209\162\215\227\236\002\228\016\2017S\182\159\228\253^\251\174\199\217G\242H\202\151@\215\167\215\215\213\157u\255\143\014\014\014\014\222\016\252\007u\143\149\232\131L\166\244\000\000\000\000IEND\174B`\130" },
@@ -8325,6 +8485,11 @@ do
 		return box, holder
 	end
 
+	function U.code(parent, order, placeholder, height)
+		local box, holder = Delve.apps.input(parent, order, placeholder, height or 140)
+		return box, holder
+	end
+
 	function U.poll(win, dt, fn)
 		task.spawn(function()
 			while win.frame and win.frame.Parent do
@@ -8356,7 +8521,7 @@ task.spawn(function()
 			for _, i in ipairs(list) do for _, t in ipairs(CS:GetTags(i)) do out[#out + 1] = t end end
 			K.copy(table.concat(out, ", "), "tags")
 		end)
-		if ALL_KNOWING and (sel:IsA("RemoteEvent") or sel:IsA("RemoteFunction") or sel:IsA("UnreliableRemoteEvent")) then
+		if (sel:IsA("RemoteEvent") or sel:IsA("RemoteFunction") or sel:IsA("UnreliableRemoteEvent")) then
 			item("Spy This Remote", nil, true, function() Delve.spy.open(); Delve.spy.watch(sel) end)
 			item("Block This Remote", nil, true, function() Delve.spy.block(sel, true) end)
 		end
@@ -8398,7 +8563,6 @@ task.spawn(function()
 			if #list == 0 then notify("Nothing is tagged " .. tg) return end
 			for _, i in ipairs(list) do reveal(i) end
 			afterChange(list)
-			notify(string.format("Selected %d instance(s) tagged %s", #list, tg))
 		end
 
 		local function build()
@@ -8429,8 +8593,7 @@ task.spawn(function()
 			af.Size = UDim2.new(1, -90, 0, touchH(26))
 			local rescan = Apps.button(allRow, "Rescan", 2)
 			local allBox = K.ui.box(scroll, nextOrder())
-			local status = K.ui.text(scroll, nextOrder(), "", { dim = true, wrap = true, size = 13 })
-			status.Visible = false
+			local status = Instance.new("TextLabel")
 
 			local lastSig = ""
 			local function signature(list)
@@ -8586,11 +8749,505 @@ task.spawn(function()
 		Apps.add({ name = "Tag Editor", icon = "Folder", fallback = "Folder", ribbon = "tags", open = Tags.open })
 	end
 
+		local Spy = {
+			logs = {}, max = 400, enabled = false, paused = false,
+			methods = { FireServer = true, InvokeServer = true },
+			blocked = {}, ignored = {}, watching = nil, filter = "",
+			spoofSrc = "", spoofFn = nil, hooks = {}, version = 0,
+		}
+		Delve.spy = Spy
+		local CFG = "LX/hookspy.json"
+		local hmm = envFn("hookmetamethod")
+		local hf = envFn("hookfunction", "replaceclosure")
+		local gnm = envFn("getnamecallmethod")
+		local cc = envFn("checkcaller")
+		local ncc = envFn("newclosure", "newcclosure") or function(f) return f end
+		ncc = envFn("newcclosure") or ncc
+		local ls = envFn("loadstring") or loadstring
+
+		local SPOOF_TEMPLATE = "return function(remote, method, args)\n\treturn args\nend"
+
+		local function remoteScript(remote, method, args)
+			local lines = {}
+			if args.n and args.n > 0 then
+				local packed = {}
+				for i = 1, args.n do packed[i] = args[i] end
+				lines[#lines + 1] = "local args = " .. K.ser(packed, 6)
+				lines[#lines + 1] = K.ser(remote) .. ":" .. method .. "(unpack(args, 1, " .. args.n .. "))"
+			else
+				lines[#lines + 1] = K.ser(remote) .. ":" .. method .. "()"
+			end
+			return table.concat(lines, "\n")
+		end
+
+		local function argText(args)
+			local parts = {}
+			for i = 1, math.min(args.n or #args, 8) do parts[#parts + 1] = K.ser(args[i], 1):gsub("\n%s*", " ") end
+			if (args.n or 0) > 8 then parts[#parts + 1] = "..." end
+			return table.concat(parts, ", ")
+		end
+
+		local function push(entry)
+			if Spy.paused then return end
+			table.insert(Spy.logs, 1, entry)
+			if #Spy.logs > Spy.max then table.remove(Spy.logs) end
+			Spy.version += 1
+		end
+
+		local function record(remote, method, args, blocked, origin)
+			if Spy.ignored[remote] then return end
+			if Spy.watching and Spy.watching ~= remote then return end
+			local ok, path = pcall(function() return remote:GetFullName() end)
+			push({
+				kind = "remote", remote = remote, method = method, args = args, blocked = blocked, origin = origin,
+				name = tostring(remote.Name), path = ok and path or "?", time = os.clock(),
+			})
+		end
+
+		local function applySpoof(remote, method, args)
+			if not Spy.spoofFn then return args end
+			local ok, res = pcall(Spy.spoofFn, remote, method, args)
+			if not ok then return args end
+			if res == false then return false end
+			if type(res) == "table" then
+				res.n = res.n or #res
+				return res
+			end
+			return args
+		end
+
+		function Spy.setSpoof(src)
+			Spy.spoofSrc = src or ""
+			if K.trim(Spy.spoofSrc) == "" then Spy.spoofFn = nil return true end
+			if typeof(ls) ~= "function" then return false, "no loadstring" end
+			local chunk, err = ls(Spy.spoofSrc)
+			if not chunk then return false, err end
+			local ok, fn = pcall(chunk)
+			if not ok then return false, fn end
+			if type(fn) ~= "function" then return false, "script must return a function" end
+			Spy.spoofFn = fn
+			return true
+		end
+
+		function Spy.install()
+			if Spy.installed then return true end
+			if not (hmm and gnm) then return false, "Your executor has no hookmetamethod" end
+			local old
+			old = hmm(game, "__namecall", ncc(function(self, ...)
+				if Spy.enabled and typeof(self) == "Instance" and not (cc and cc()) then
+					local m = gnm()
+					if Spy.methods[m] then
+						local args = table.pack(...)
+						if Spy.blocked[self] then
+							task.spawn(record, self, m, args, true, "namecall")
+							return nil
+						end
+						local out = applySpoof(self, m, args)
+						if out == false then
+							task.spawn(record, self, m, args, true, "namecall")
+							return nil
+						end
+						task.spawn(record, self, m, out, false, "namecall")
+						if out ~= args then return old(self, table.unpack(out, 1, out.n)) end
+					end
+				end
+				return old(self, ...)
+			end))
+			Spy.oldNamecall = old
+			if hf then
+				for _, pair in ipairs({ { "RemoteEvent", "FireServer" }, { "RemoteFunction", "InvokeServer" }, { "UnreliableRemoteEvent", "FireServer" } }) do
+					pcall(function()
+						local probe = Instance.new(pair[1])
+						local fn = probe[pair[2]]
+						probe:Destroy()
+						local method = pair[2]
+						local oldFn
+						oldFn = hf(fn, ncc(function(self, ...)
+							if Spy.enabled and Spy.methods[method] and typeof(self) == "Instance" and not (cc and cc()) then
+								local args = table.pack(...)
+								if Spy.blocked[self] then task.spawn(record, self, method, args, true, "direct") return nil end
+								local out = applySpoof(self, method, args)
+								if out == false then task.spawn(record, self, method, args, true, "direct") return nil end
+								task.spawn(record, self, method, out, false, "direct")
+								return oldFn(self, table.unpack(out, 1, out.n))
+							end
+							return oldFn(self, ...)
+						end))
+					end)
+				end
+			end
+			Spy.installed = true
+			return true
+		end
+
+		function Spy.hookFunction(expr)
+			if not hf then return false, "Your executor has no hookfunction" end
+			local fn, err = K.eval(expr)
+			if type(fn) ~= "function" then return false, err or "that expression isn't a function" end
+			if Spy.hooks[expr] then return false, "already hooked" end
+			local entry = { expr = expr, fn = fn, calls = 0 }
+			local oldFn
+			oldFn = hf(fn, ncc(function(...)
+				if not entry.active or (cc and cc()) then return oldFn(...) end
+				local args = table.pack(...)
+				local rets = table.pack(oldFn(...))
+				entry.calls += 1
+				task.spawn(push, { kind = "func", name = expr, path = "", args = args, rets = rets, time = os.clock() })
+				return table.unpack(rets, 1, rets.n)
+			end))
+			entry.old = oldFn
+			entry.active = true
+			Spy.hooks[expr] = entry
+			return true
+		end
+
+		function Spy.unhook(expr)
+			local e = Spy.hooks[expr]
+			if not e then return end
+			e.active = false
+			local rf = envFn("restorefunction")
+			if rf then pcall(rf, e.fn) elseif hf and e.old then pcall(hf, e.fn, e.old) end
+			Spy.hooks[expr] = nil
+		end
+
+		function Spy.block(remote, on)
+			Spy.blocked[remote] = on or nil
+		end
+
+		function Spy.watch(remote)
+			Spy.watching = remote
+			Spy.version += 1
+		end
+
+		function Spy.save()
+			local blocked, ignored, hooks = {}, {}, {}
+			for r in pairs(Spy.blocked) do blocked[#blocked + 1] = K.ser(r) end
+			for r in pairs(Spy.ignored) do ignored[#ignored + 1] = K.ser(r) end
+			for e in pairs(Spy.hooks) do hooks[#hooks + 1] = e end
+			local methods = {}
+			for m, on in pairs(Spy.methods) do if on then methods[#methods + 1] = m end end
+			local ok = K.writeJson(CFG, { methods = methods, blocked = blocked, ignored = ignored, hooks = hooks, spoof = Spy.spoofSrc })
+			if not ok then notify("Couldn't save config") end
+		end
+
+		function Spy.load()
+			local t = K.readJson(CFG, nil)
+			if type(t) ~= "table" then notify("No saved Hook Spy config") return end
+			Spy.methods = {}
+			for _, m in ipairs(t.methods or {}) do Spy.methods[m] = true end
+			Spy.blocked, Spy.ignored = {}, {}
+			for _, p in ipairs(t.blocked or {}) do local r = K.eval(p) if typeof(r) == "Instance" then Spy.blocked[r] = true end end
+			for _, p in ipairs(t.ignored or {}) do local r = K.eval(p) if typeof(r) == "Instance" then Spy.ignored[r] = true end end
+			for _, e in ipairs(t.hooks or {}) do pcall(Spy.hookFunction, e) end
+			Spy.setSpoof(t.spoof or "")
+			Spy.version += 1
+		end
+
+		local function build()
+			local win = Apps.window("hookspy", "Hook Spy")
+			local scroll, nextOrder = K.ui.page(win.pane.body)
+			local bar = Apps.row(scroll, nextOrder())
+			local toggle = Apps.button(bar, "Start", 1)
+			local pause = Apps.button(bar, "Pause", 2)
+			local clear = Apps.button(bar, "Clear", 3)
+			local saveB = Apps.button(bar, "Save", 4)
+			local loadB = Apps.button(bar, "Load", 5)
+
+			Apps.title(scroll, nextOrder(), "Methods")
+			local mRow = Apps.row(scroll, nextOrder())
+			local mBox, mh = Apps.input(mRow, 1, "Methods")
+			mh.Size = UDim2.new(1, -70, 0, touchH(26))
+			local mSet = Apps.button(mRow, "Apply", 2)
+
+			Apps.title(scroll, nextOrder(), "Hooks")
+			local hRow = Apps.row(scroll, nextOrder())
+			local hBox, hh = Apps.input(hRow, 1, "Function")
+			hh.Size = UDim2.new(1, -70, 0, touchH(26))
+			local hAdd = Apps.button(hRow, "Hook", 2)
+			local hookBox = K.ui.box(scroll, nextOrder())
+
+			Apps.title(scroll, nextOrder(), "Spoof Script")
+			local spoofBox = K.ui.code(scroll, nextOrder(), SPOOF_TEMPLATE, 110)
+			local sRow = Apps.row(scroll, nextOrder())
+			local sApply = Apps.button(sRow, "Apply Script", 1)
+			local sReset = Apps.button(sRow, "Template", 2)
+			local sOff = Apps.button(sRow, "Disable", 3)
+
+			Apps.title(scroll, nextOrder(), "Log")
+			local fRow = Apps.row(scroll, nextOrder())
+			local fBox, fh = Apps.input(fRow, 1, "Filter by name")
+			fh.Size = UDim2.new(1, -110, 0, touchH(26))
+			local unwatch = Apps.button(fRow, "Show All", 2)
+			local logBox = K.ui.box(scroll, nextOrder())
+			local detail = K.ui.text(scroll, nextOrder(), "", { code = true, wrap = true, size = 13 })
+
+			local function sayStatus()
+				toggle.Text = Spy.enabled and "Stop" or "Start"
+				pause.Text = Spy.paused and "Resume" or "Pause"
+			end
+
+			local function renderHooks()
+				K.ui.clear(hookBox)
+				local n = 0
+				for expr, e in pairs(Spy.hooks) do
+					n += 1
+					K.ui.item(hookBox, n, expr, nil, nil, { code = true, actions = {
+						{ "Unhook", function() Spy.unhook(expr); renderHooks() end, 60 },
+					} })
+				end
+			end
+
+			local function matches(e, f)
+				if f == "" then return true end
+				local neg = f:sub(1, 1) == "-"
+				local q = neg and f:sub(2) or f
+				if q == "" then return true end
+				local hay = (e.name .. " " .. e.path .. " " .. (e.method or "") .. " " .. argText(e.args)):lower()
+				local hit = hay:find(q, 1, true) ~= nil
+				if neg then return not hit end
+				return hit
+			end
+
+			local shown = -1
+			local function renderLog(force)
+				if not force and shown == Spy.version then return end
+				shown = Spy.version
+				K.ui.clear(logBox)
+				local f = fBox.Text:lower()
+				local n = 0
+				for _, e in ipairs(Spy.logs) do
+					if matches(e, f) then
+						n += 1
+						if n > 120 then break end
+						if e.kind == "remote" then
+							local r = e.remote
+							K.ui.item(logBox, n, (e.blocked and "[blocked] " or "") .. e.method .. "  " .. e.name, argText(e.args), function()
+								detail.Text = e.path .. "\n\n" .. remoteScript(r, e.method, e.args)
+							end, { icon = r, color = e.blocked and Configuration.Theme.Dim or nil, actions = {
+								{ "Copy", function() K.copy(remoteScript(r, e.method, e.args), "script") end, 44 },
+								{ "Run", function()
+									local okR, errR = pcall(function() return r[e.method](r, table.unpack(e.args, 1, e.args.n)) end)
+									if not okR then notify(tostring(errR)) end
+								end, 38 },
+								{ Spy.blocked[r] and "Unblock" or "Block", function() Spy.block(r, not Spy.blocked[r]); renderLog(true) end, 56 },
+								{ "Ignore", function() Spy.ignored[r] = true end, 50 },
+								{ "Go", function() Delve.goTo(r) end, 30 },
+							} })
+						else
+							K.ui.item(logBox, n, "call  " .. e.name, argText(e.args) .. "  ->  " .. argText(e.rets), function()
+								detail.Text = e.name .. "\nargs = " .. K.ser({ table.unpack(e.args, 1, e.args.n) }, 4) .. "\nreturns = " .. K.ser({ table.unpack(e.rets, 1, e.rets.n) }, 4)
+							end, { code = true })
+						end
+					end
+				end
+				sayStatus()
+			end
+
+			toggle.MouseButton1Click:Connect(function()
+				if not Spy.enabled then
+					local ok, err = Spy.install()
+					if not ok then notify(err) return end
+				end
+				Spy.enabled = not Spy.enabled
+				sayStatus()
+			end)
+			pause.MouseButton1Click:Connect(function() Spy.paused = not Spy.paused; sayStatus() end)
+			clear.MouseButton1Click:Connect(function() table.clear(Spy.logs); Spy.version += 1; detail.Text = "" end)
+			saveB.MouseButton1Click:Connect(Spy.save)
+			loadB.MouseButton1Click:Connect(function()
+				Spy.load()
+				spoofBox.Text = Spy.spoofSrc
+				local list = {}
+				for m in pairs(Spy.methods) do list[#list + 1] = m end
+				mBox.Text = table.concat(list, ", ")
+				renderHooks()
+			end)
+			mSet.MouseButton1Click:Connect(function()
+				local t = {}
+				for m in mBox.Text:gmatch("[%w_]+") do t[m] = true end
+				if next(t) == nil then t = { FireServer = true, InvokeServer = true } end
+				Spy.methods = t
+			end)
+			hAdd.MouseButton1Click:Connect(function()
+				local ok, err = Spy.hookFunction(K.trim(hBox.Text))
+				if not ok then notify(tostring(err)) else hBox.Text = "" end
+				renderHooks()
+			end)
+			sApply.MouseButton1Click:Connect(function()
+				local ok, err = Spy.setSpoof(spoofBox.Text)
+				if not ok then notify(tostring(err)) end
+				sayStatus()
+			end)
+			sReset.MouseButton1Click:Connect(function() spoofBox.Text = SPOOF_TEMPLATE end)
+			sOff.MouseButton1Click:Connect(function() Spy.setSpoof(""); sayStatus() end)
+			unwatch.MouseButton1Click:Connect(function() Spy.watch(nil); table.clear(Spy.ignored) end)
+			fBox:GetPropertyChangedSignal("Text"):Connect(function() renderLog(true) end)
+			mBox.Text = "FireServer, InvokeServer"
+			spoofBox.Text = SPOOF_TEMPLATE
+			renderHooks()
+			K.ui.poll(win, 0.35, function() renderLog(false) end)
+			return win
+		end
+
+		function Spy.open()
+			if not Spy.win then Spy.win = build() end
+			Spy.win.show(40)
+		end
+
+		Apps.add({ name = "Hook Spy", icon = "RemoteEvent", fallback = "RemoteEvent", ribbon = "hookspy", open = Spy.open })
+
 	local P = { loaded = {}, order = {} }
 	Delve.plugins = P
 	local DIR = "LX/plugins"
 	local ls = envFn("loadstring") or loadstring
 	local rf, wf, lf, df = readfile, writefile, listfiles, delfile
+
+	local function imguiWindow(name, title)
+		local win = Apps.window(name, title)
+		local T = Configuration.Theme
+		local UIS = game:GetService("UserInputService")
+		local RS = game:GetService("RunService")
+		local root = new("ScrollingFrame", {
+			BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1),
+			CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 6, ZIndex = 3,
+		}, win.pane.body)
+		new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8), PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }, root)
+		new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, root)
+		local pool, idx, fn, conn = {}, 0, nil, nil
+		local g = { window = win, root = root }
+		local function isPress(i)
+			return i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch
+		end
+		local function label(parent, x, size)
+			return new("TextLabel", {
+				BackgroundTransparency = 1, Position = UDim2.fromOffset(x or 0, 0), Size = size or UDim2.fromScale(1, 1),
+				Font = Enum.Font.SourceSans, TextSize = 15, TextColor3 = T.Text, Text = "",
+				TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 4,
+			}, parent)
+		end
+		local function slot(kind, make)
+			idx += 1
+			local s = pool[idx]
+			if s and s.kind ~= kind then s.frame:Destroy(); s = nil end
+			if not s then
+				s = { kind = kind }
+				s.frame = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, touchH(24)), ZIndex = 3 }, root)
+				make(s)
+				pool[idx] = s
+			end
+			s.frame.LayoutOrder = idx
+			s.frame.Visible = true
+			return s
+		end
+		function g.text(text)
+			local s = slot("text", function(s) s.l = label(s.frame) end)
+			s.l.Text = tostring(text)
+		end
+		function g.header(text)
+			local s = slot("header", function(s)
+				s.l = label(s.frame)
+				s.l.Font = Enum.Font.SourceSansBold
+				s.l.TextColor3 = T.Accent
+			end)
+			s.l.Text = tostring(text)
+		end
+		function g.separator()
+			slot("sep", function(s)
+				s.frame.Size = UDim2.new(1, 0, 0, 9)
+				new("Frame", { BackgroundColor3 = T.Border, BorderSizePixel = 0, Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.new(1, 0, 0, 1), ZIndex = 4 }, s.frame)
+			end)
+		end
+		function g.button(text)
+			local s = slot("button", function(s)
+				s.b = new("TextButton", {
+					BackgroundColor3 = T.Header, BorderSizePixel = 0, AutoButtonColor = true, Size = UDim2.fromScale(1, 1),
+					Font = Enum.Font.SourceSans, TextSize = 15, TextColor3 = T.Text, Text = "", ZIndex = 4,
+				}, s.frame)
+				new("UICorner", { CornerRadius = UDim.new(0, 4) }, s.b)
+				s.b.MouseButton1Click:Connect(function() s.hit = true end)
+			end)
+			s.b.Text = tostring(text)
+			local hit = s.hit == true
+			s.hit = false
+			return hit
+		end
+		function g.checkbox(text, value)
+			local s = slot("check", function(s)
+				s.b = new("TextButton", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Text = "", ZIndex = 4 }, s.frame)
+				s.box = new("Frame", { BackgroundColor3 = T.Input, BorderSizePixel = 0, Position = UDim2.new(0, 0, 0.5, -8), Size = UDim2.fromOffset(16, 16), ZIndex = 5 }, s.b)
+				new("UICorner", { CornerRadius = UDim.new(0, 3) }, s.box)
+				s.mark = new("Frame", { BackgroundColor3 = T.Accent, BorderSizePixel = 0, Position = UDim2.fromOffset(3, 3), Size = UDim2.fromOffset(10, 10), ZIndex = 6 }, s.box)
+				new("UICorner", { CornerRadius = UDim.new(0, 2) }, s.mark)
+				s.l = label(s.b, 24, UDim2.new(1, -24, 1, 0))
+				s.b.MouseButton1Click:Connect(function() s.flip = true end)
+			end)
+			value = value and true or false
+			if s.flip then s.flip = false; value = not value end
+			s.l.Text = tostring(text)
+			s.mark.Visible = value
+			return value
+		end
+		function g.slider(text, value, min, max, step)
+			min, max = tonumber(min) or 0, tonumber(max) or 1
+			value = math.clamp(tonumber(value) or min, min, max)
+			local s = slot("slider", function(s)
+				s.l = label(s.frame, 0, UDim2.new(0.4, 0, 1, 0))
+				s.track = new("TextButton", {
+					AutoButtonColor = false, Text = "", BackgroundColor3 = T.Input, BorderSizePixel = 0,
+					Position = UDim2.new(0.4, 4, 0.5, -3), Size = UDim2.new(0.6, -4, 0, 6), ZIndex = 4,
+				}, s.frame)
+				new("UICorner", { CornerRadius = UDim.new(1, 0) }, s.track)
+				s.fill = new("Frame", { BackgroundColor3 = T.Accent, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1), ZIndex = 5 }, s.track)
+				new("UICorner", { CornerRadius = UDim.new(1, 0) }, s.fill)
+				s.track.InputBegan:Connect(function(i) if isPress(i) then s.drag = true end end)
+				s.ended = UIS.InputEnded:Connect(function(i) if isPress(i) then s.drag = false end end)
+				s.frame.Destroying:Connect(function() s.ended:Disconnect() end)
+			end)
+			if s.drag then
+				local a = math.clamp((UIS:GetMouseLocation().X - s.track.AbsolutePosition.X) / math.max(s.track.AbsoluteSize.X, 1), 0, 1)
+				value = min + a * (max - min)
+				if step then value = math.floor(value / step + 0.5) * step end
+				value = math.clamp(value, min, max)
+			end
+			s.fill.Size = UDim2.fromScale(max > min and (value - min) / (max - min) or 0, 1)
+			s.l.Text = tostring(text) .. ": " .. ((step and step >= 1) and tostring(math.floor(value + 0.5)) or string.format("%.2f", value))
+			return value
+		end
+		function g.input(text, value)
+			local s = slot("input", function(s)
+				s.l = label(s.frame, 0, UDim2.new(0.4, 0, 1, 0))
+				s.box = new("TextBox", {
+					BackgroundColor3 = T.Input, BorderSizePixel = 0, Position = UDim2.new(0.4, 4, 0, 1), Size = UDim2.new(0.6, -4, 1, -2),
+					Font = Enum.Font.SourceSans, TextSize = 15, TextColor3 = T.Text, Text = "", ClearTextOnFocus = false,
+					TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4,
+				}, s.frame)
+				new("UICorner", { CornerRadius = UDim.new(0, 3) }, s.box)
+				new("UIPadding", { PaddingLeft = UDim.new(0, 4) }, s.box)
+				s.box.FocusLost:Connect(function() s.pending = s.box.Text end)
+			end)
+			if s.pending ~= nil then value = s.pending; s.pending = nil end
+			s.l.Text = tostring(text)
+			if not s.box:IsFocused() then s.box.Text = tostring(value or "") end
+			return value
+		end
+		function g.render(f)
+			fn = f
+			if conn then return end
+			conn = RS.RenderStepped:Connect(function()
+				if not win.frame.Parent then conn:Disconnect(); conn = nil return end
+				if not (fn and win.frame.Visible) then return end
+				idx = 0
+				local ok, err = pcall(fn, g)
+				if not ok then warn("[LX] imgui " .. tostring(name) .. ": " .. tostring(err)); fn = nil end
+				for i = idx + 1, #pool do pool[i].frame.Visible = false end
+			end)
+		end
+		function g.stop()
+			if conn then conn:Disconnect(); conn = nil end
+		end
+		function g.show(offset) win.show(offset or 56) end
+		return g
+	end
 
 	P.api = {
 		Delve = Delve, K = K, apps = Apps, ui = K.ui, theme = Configuration.Theme, notify = notify,
@@ -8605,15 +9262,95 @@ task.spawn(function()
 		icon = K.lxIcon, copy = K.copy, ser = K.ser,
 		selection = function() return table.clone(State.selection) end,
 		goTo = Delve.goTo, search = Delve.search,
+		embed = function(name, title)
+			local win = Apps.window(name, title)
+			return win.pane.body, win
+		end,
+		imgui = function(name, title) return imguiWindow(name, title) end,
+		gui = function(title, opts) return P.gui(nil, title, opts) end,
+		ImGui = function(name, title) return imguiWindow(name, title) end,
 	}
 
 	local function baseName(path)
 		return (path:gsub("\\", "/"):match("([^/]+)$") or path)
 	end
 
+	function P.gui(entry, title, opts)
+		title = tostring(title or (entry and entry.name) or "Plugin")
+		local win = Apps.window("plugin_" .. title, title)
+		local holder = new("Frame", {
+			Name = "PluginContent", BackgroundTransparency = 1, BorderSizePixel = 0,
+			Size = UDim2.fromScale(1, 1), ClipsDescendants = true, ZIndex = 3,
+		}, win.pane.body)
+		if type(opts) == "table" and typeof(opts.size) == "Vector2" then
+			win.frame.Size = UDim2.fromOffset(opts.size.X, opts.size.Y + K.TITLE_H)
+		end
+		if entry then
+			entry.windows = entry.windows or {}
+			table.insert(entry.windows, { win = win, holder = holder })
+		end
+		win.show(56)
+		return holder, win
+	end
+
+	local function adoptGui(entry, sg)
+		if not (entry and sg and sg.Parent) then return end
+		local kids = {}
+		for _, c in ipairs(sg:GetChildren()) do
+			if c:IsA("GuiObject") then table.insert(kids, c) end
+		end
+		if #kids == 0 then return end
+		local w, h = 0, 0
+		for _, c in ipairs(kids) do
+			local sz = c.AbsoluteSize
+			w, h = math.max(w, sz.X), math.max(h, sz.Y)
+		end
+		local holder = P.gui(entry, entry.name, (w > 0 and h > 0) and { size = Vector2.new(math.min(w + 40, 1200), math.min(h + 40, 900)) } or nil)
+		for _, c in ipairs(kids) do
+			local p, sz = c.Position, c.Size
+			if p.X.Scale > 0 or p.Y.Scale > 0 or c.AnchorPoint.Magnitude > 0 then
+				if sz.X.Scale < 0.99 or sz.Y.Scale < 0.99 then
+					c.AnchorPoint = Vector2.new(0.5, 0.5)
+					c.Position = UDim2.fromScale(0.5, 0.5)
+				end
+			end
+			c.Parent = holder
+		end
+		sg:Destroy()
+	end
+
+	local function captureGuis(entry)
+		local conns, roots = {}, {}
+		pcall(function()
+			local lp = game:GetService("Players").LocalPlayer
+			if lp then table.insert(roots, lp:FindFirstChildOfClass("PlayerGui")) end
+		end)
+		pcall(function() table.insert(roots, game:GetService("CoreGui")) end)
+		local gh = envFn("gethui")
+		if typeof(gh) == "function" then pcall(function() table.insert(roots, gh()) end) end
+		for _, r in ipairs(roots) do
+			if r and r ~= UI.gui then
+				table.insert(conns, r.ChildAdded:Connect(function(c)
+					if c == UI.gui or not (c:IsA("ScreenGui") or c:IsA("LayerCollector")) or c:IsA("BillboardGui") or c:IsA("SurfaceGui") then return end
+					task.defer(function()
+						task.wait()
+						if P.loaded[entry.name] == entry then pcall(adoptGui, entry, c) end
+					end)
+				end))
+			end
+		end
+		return function()
+			task.delay(2, function() for _, c in ipairs(conns) do c:Disconnect() end end)
+		end
+	end
+
 	function P.unload(name)
 		local p = P.loaded[name]
 		if not p then return end
+		for _, w in ipairs(p.windows or {}) do
+			pcall(function() w.holder:Destroy() end)
+			pcall(function() w.win.frame.Visible = false; w.win.closed = true end)
+		end
 		if type(p.module) == "table" and type(p.module.unload) == "function" then pcall(p.module.unload) end
 		for i = #Delve.menuHooks, 1, -1 do
 			if p.menus and p.menus[Delve.menuHooks[i]] then table.remove(Delve.menuHooks, i) end
@@ -8631,8 +9368,11 @@ task.spawn(function()
 		if not fn then entry.err = tostring(err) return entry end
 		local api = setmetatable({
 			addMenu = function(f) entry.menus[f] = true table.insert(Delve.menuHooks, f) return f end,
+			gui = function(title, opts) return P.gui(entry, title or name:gsub("%.lua[u]?$", ""):gsub("%.txt$", ""), opts) end,
 		}, { __index = P.api })
+		local stopCapture = captureGuis(entry)
 		local ok, res = pcall(fn, api)
+		stopCapture()
 		entry.ok = ok
 		if ok then entry.module = res else entry.err = tostring(res) end
 		return entry
@@ -8683,8 +9423,7 @@ task.spawn(function()
 		local bar = Apps.row(scroll, nextOrder())
 		local reloadAll = Apps.button(bar, "Reload All", 1)
 		local listBox = K.ui.box(scroll, nextOrder())
-		local status = K.ui.text(scroll, nextOrder(), "", { dim = true, wrap = true, size = 13 })
-			status.Visible = false
+		local status = Instance.new("TextLabel")
 
 		local render
 		render = function()
@@ -8708,10 +9447,7 @@ task.spawn(function()
 			end
 		end
 		inst.MouseButton1Click:Connect(function()
-			status.Visible = true
-			K.loading(status)
-			local ok, err = P.install(urlBox.Text)
-			status.Text = ok and "Installed." or ("Failed: " .. tostring(err))
+			local ok = P.install(urlBox.Text)
 			if ok then urlBox.Text = "" end
 			render()
 		end)
