@@ -6772,7 +6772,6 @@ local function bootApps()
 	end
 	local PRESETS = {
 		{ "GitHub Dark", { bg = "0d1117", fg = "c9d1d9", accent = "ffffff", accentText = "000000", panel = "21262d", border = "30363d", keyword = "ff7b72", string = "a5d6ff", comment = "8b949e", number = "79c0ff", builtin = "ffa657", fn = "d2a8ff", property = "7ee787" } },
-		{ "Everforest", { bg = "2d353b", fg = "d3c6aa", accent = "a7c080", accentText = "2d353b", keyword = "e67e80", string = "a7c080", comment = "859289", number = "d699b6", builtin = "7fbbb3", fn = "dbbc7f", property = "83c092" } },
 	}
 	for _, p in ipairs(PRESETS) do
 		local ok, th = pcall(preset, p[2])
