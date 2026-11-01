@@ -1625,7 +1625,48 @@ end
 function K.pset(inst, name, v)
 	if not K.allowProperty(name) then return end
 	if K.isAttr(name) then inst:SetAttribute(name:sub(2), v) return end
-	inst[name] = v
+	local ok, err = pcall(function() inst[name] = v end)
+	if ok then return end
+	local shp = K.setHidden
+	if shp == nil then
+		shp = false
+		pcall(function()
+			if typeof(envFn) == "function" then shp = envFn("sethiddenproperty") or false
+			else local f = getfenv().sethiddenproperty if typeof(f) == "function" then shp = f end end
+		end)
+		K.setHidden = shp
+	end
+	if shp and pcall(shp, inst, name, v) then return end
+	error(err, 0)
+end
+K.NIL = newproxy and newproxy(false) or {}
+function K.resolvePath(txt)
+	txt = txt:gsub("^%s+", ""):gsub("%s+$", "")
+	if txt == "" or txt:lower() == "nil" then return K.NIL end
+	local cur = game
+	local rest = txt:gsub("^game%.?", "")
+	for seg in rest:gmatch("[^%.]+") do
+		local nxt = cur:FindFirstChild(seg)
+		if not nxt and cur == game then pcall(function() nxt = game:GetService(seg) end) end
+		if not nxt then return nil end
+		cur = nxt
+	end
+	return cur
+end
+function K.parseNumber(txt)
+	local h, m, sec = txt:match("^%s*(%-?%d+):(%d+):?(%d*)%s*$")
+	if h then return tonumber(h) + tonumber(m) / 60 + (tonumber(sec) or 0) / 3600 end
+	local n = tonumber(txt)
+	if n then return n end
+	local ls = loadstring or load
+	if ls and txt:match("^[%d%s%.%+%-%*/%%%^%(%)]+$") then
+		local okF, fn = pcall(ls, "return " .. txt)
+		if okF and fn then
+			local okR, r = pcall(fn)
+			if okR and type(r) == "number" then return r end
+		end
+	end
+	return nil
 end
 
 local function closeEditBox()
@@ -1641,9 +1682,10 @@ UI.editBox.FocusLost:Connect(function(enter)
 	local newVal
 	local txt = UI.editBox.Text
 	if typeof(cur) == "number" then
-		newVal = tonumber(txt)
+		newVal = K.parseNumber(txt)
 	elseif typeof(cur) == "boolean" then
-		newVal = txt:lower() == "true"
+		local l = txt:lower()
+		newVal = l == "true" or l == "1" or l == "yes" or l == "on"
 	elseif typeof(cur) == "string" then
 		newVal = txt
 	elseif typeof(cur) == "EnumItem" then
@@ -1672,6 +1714,10 @@ UI.editBox.FocusLost:Connect(function(enter)
 			newVal = Rect.new(nums[1], nums[2], nums[3], nums[4])
 		elseif k == "NumberRange" and #nums >= 1 then
 			newVal = NumberRange.new(nums[1], nums[2] or nums[1])
+		elseif k == "CFrame" and #nums >= 12 then
+			newVal = CFrame.new(table.unpack(nums, 1, 12))
+		elseif k == "CFrame" and #nums >= 6 then
+			newVal = CFrame.new(nums[1], nums[2], nums[3]) * CFrame.Angles(math.rad(nums[4]), math.rad(nums[5]), math.rad(nums[6]))
 		elseif k == "CFrame" and #nums >= 3 then
 			newVal = CFrame.new(nums[1], nums[2], nums[3]) * (cur - cur.Position)
 		elseif k == "Color3" and #nums >= 3 then
@@ -1679,7 +1725,13 @@ UI.editBox.FocusLost:Connect(function(enter)
 		elseif k == "BrickColor" then
 			pcall(function() newVal = BrickColor.new(txt) end)
 		elseif k == "NumberSequence" and #nums >= 1 then
-			newVal = NumberSequence.new(nums[1])
+			local kps = {}
+			for t, v in txt:gmatch("(%-?[%d%.]+)%s*:%s*(%-?[%d%.]+)") do
+				kps[#kps + 1] = NumberSequenceKeypoint.new(tonumber(t), tonumber(v))
+			end
+			pcall(function()
+				if #kps >= 2 then newVal = NumberSequence.new(kps) else newVal = NumberSequence.new(nums[1]) end
+			end)
 		elseif k == "PhysicalProperties" and #nums >= 3 then
 			newVal = PhysicalProperties.new(nums[1], nums[2], nums[3])
 		elseif k == "Vector3int16" and #nums >= 3 then
@@ -1699,12 +1751,34 @@ UI.editBox.FocusLost:Connect(function(enter)
 		elseif k == "Content" then
 			pcall(function() newVal = Content.fromUri(txt) end)
 		elseif k == "nil" or k == "Instance" then
-			newVal = nil
+			newVal = K.resolvePath(txt)
+		elseif k == "ColorSequence" and #nums >= 3 then
+			local kps = {}
+			for t, r, g, b in txt:gmatch("(%-?[%d%.]+)%s*:%s*%[?%s*(%d+)%s*,%s*(%d+)%s*,%s*(%d+)") do
+				kps[#kps + 1] = ColorSequenceKeypoint.new(tonumber(t), Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b)))
+			end
+			pcall(function()
+				if #kps >= 2 then newVal = ColorSequence.new(kps)
+				else newVal = ColorSequence.new(Color3.fromRGB(nums[1], nums[2], nums[3])) end
+			end)
+		elseif k == "Faces" or k == "Axes" then
+			local list = {}
+			for w in txt:gmatch("%a+") do
+				local okE, item = pcall(function() return (k == "Faces" and Enum.NormalId or Enum.Axis)[w] end)
+				if okE and item then list[#list + 1] = item end
+			end
+			pcall(function() newVal = (k == "Faces" and Faces or Axes).new(table.unpack(list)) end)
+		elseif k == "Vector3" and #nums >= 3 then
+			newVal = Vector3.new(nums[1], nums[2], nums[3])
+		elseif k == "Vector2" and #nums >= 2 then
+			newVal = Vector2.new(nums[1], nums[2])
 		else
 			newVal = txt
 		end
 	end
-	if newVal ~= nil then
+	if newVal == K.NIL then
+		pcall(K.pset, inst, prop, nil)
+	elseif newVal ~= nil then
 		pcall(K.pset, inst, prop, newVal)
 	end
 	closeEditBox()
@@ -1725,6 +1799,11 @@ local function beginPropEdit(inst, prop, curVal, row, valueLabel)
 		UI.editBox.Text = string.format("%.3f, %.3f", curVal.X, curVal.Y)
 	elseif typeof(curVal) == "string" or typeof(curVal) == "number" or typeof(curVal) == "boolean" then
 		UI.editBox.Text = tostring(curVal)
+	elseif typeof(curVal) == "Instance" then
+		local okN, full = pcall(curVal.GetFullName, curVal)
+		UI.editBox.Text = okN and full or tostring(curVal)
+	elseif curVal == nil then
+		UI.editBox.Text = "nil"
 	else
 		UI.editBox.Text = (fmt(curVal))
 	end
@@ -2482,7 +2561,7 @@ renderProps = function()
 					if pname == "ClassName" then
 						readOnly = true
 					elseif not K.isAttr(pname) then
-						readOnly = not pcall(K.pset, inst, pname, val)
+						readOnly = false
 					end
 					local GREY = Color3.fromRGB(110, 110, 110)
 					local row = new("Frame", {
@@ -2557,10 +2636,7 @@ renderProps = function()
 						valueLabel.MouseButton1Click:Connect(openPick)
 						local swb = row:FindFirstChild("swatch")
 						if swb and swb:IsA("GuiButton") then swb.MouseButton1Click:Connect(openPick) end
-					elseif vt == "number" or vt == "string" or vt == "Vector3" or vt == "Vector2" or vt == "EnumItem"
-						or vt == "UDim2" or vt == "UDim" or vt == "Rect" or vt == "NumberRange" or vt == "CFrame"
-						or vt == "BrickColor" or vt == "NumberSequence" or vt == "PhysicalProperties" or vt == "Font"
-						or vt == "Vector3int16" or vt == "Vector2int16" or vt == "Content" then
+					else
 						valueLabel.MouseButton1Click:Connect(function()
 							beginPropEdit(inst, pname, val, row, valueLabel)
 						end)
