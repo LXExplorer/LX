@@ -1,13 +1,4 @@
--- LXSplorer Regular edition
---[[
-
- _    __  __      
-| |   \ \/ /    
-| |    \  /     
-| |___ /  \     
-|_____/_/\_\    
-                                       
-
+--[[             
 Before you ask, Yes LXSplorer is Vibecoded with Claude but some parts are hand written or hand made/edited by me such as themes,Config,Plugins, and other small things. A select few apps were also hand written by me
 
 LXSplorer is a debugging suite designed to compete with dex and acheive TRUE freedom across games
@@ -16,6 +7,7 @@ LXSplorer also features a buncha useful features such as Hook and things that Zi
 
 Terry davis would be proud 
 ]]
+
 
 
 local K = {}
@@ -76,7 +68,7 @@ do
 			for _, x in ipairs(list) do
 				local ok, on = pcall(function() return x.Connected end)
 				if ok and on then live[#live + 1] = x end
-			end
+			end --for _, x in ipairs(list) do
 			K.conns = live
 		end
 		return c
@@ -443,7 +435,7 @@ do
 	end)
 	for _, p in ipairs(candidates) do
 		if usable(p) then UI.guiParent = p break end
-	end
+	end --for _, p in ipairs(candidates) do
 	UI.guiParent = UI.guiParent or game:GetService("CoreGui")
 	local roots = { UI.guiParent }
 	pcall(function() roots[#roots + 1] = game:GetService("CoreGui") end)
@@ -464,7 +456,7 @@ local function new(class, props, parent)
 	if K.TEXT_CLASSES[class] and props.Font == nil and props.FontFace == nil then
 		o.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 	end
-	for k, v in pairs(props) do o[k] = v end
+	for k, v in pairs(props) do o[k] = v end --for k, v in pairs(props) do
 	o.Parent = parent
 	if class == "ScreenGui" then K.ownedGuis[#K.ownedGuis + 1] = o end
 	return o
@@ -1039,7 +1031,7 @@ local function refreshSelectionBoxes()
 			box:Destroy()
 			selectionBoxes[inst] = nil
 		end
-	end
+	end --for inst, box in pairs(selectionBoxes) do
 	for inst, target in pairs(wanted) do
 		if not selectionBoxes[inst] then
 			selectionBoxes[inst] = new("SelectionBox", {
@@ -1054,7 +1046,7 @@ local function setSelection(list, primary)
 	table.clear(State.selection); table.clear(State.selSet)
 	for _, inst in ipairs(list) do
 		if inst and not State.selSet[inst] then State.selSet[inst] = true; State.selection[#State.selection + 1] = inst end
-	end
+	end --for _, inst in ipairs(list) do
 	State.selected = primary or State.selection[#State.selection]
 	refreshSelectionBoxes()
 	repaintRows(); renderProps()
@@ -1171,7 +1163,7 @@ function Cache.search(needle, limit)
 		end
 	end
 	table.sort(out, function(a, b) return a.lower < b.lower end)
-	for i, rec in ipairs(out) do out[i] = rec.inst end
+	for i, rec in ipairs(out) do out[i] = rec.inst end --for i, rec in ipairs(out) do
 	return out
 end
 function Cache.track(root)
