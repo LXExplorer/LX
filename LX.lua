@@ -1,4 +1,4 @@
--- LX Regular edition
+-- LXSplorer Regular edition
 --[[
 
  _    __  __      
@@ -8,11 +8,11 @@
 |_____/_/\_\    
                                        
 
-Before you ask, Yes LX is Vibecoded with Claude but some parts are hand written or hand made/edited by me such as themes,Config,Plugins, and other small things. A select few apps were also hand written by me
+Before you ask, Yes LXSplorer is Vibecoded with Claude but some parts are hand written or hand made/edited by me such as themes,Config,Plugins, and other small things. A select few apps were also hand written by me
 
-LX is a debugging suite designed to compete with dex and acheive TRUE freedom across games
+LXSplorer is a debugging suite designed to compete with dex and acheive TRUE freedom across games
 
-LX also features a buncha useful features such as Hook and things that Zinnia was too lazy to add
+LXSplorer also features a buncha useful features such as Hook and things that Zinnia was too lazy to add
 
 Terry davis would be proud 
 ]]
@@ -64,7 +64,7 @@ local Options = {
 do
 	local genv = _G
 	pcall(function() if typeof(getgenv) == "function" then genv = getgenv() end end)
-	if type(genv.LX_Shutdown) == "function" then pcall(genv.LX_Shutdown) end
+	if type(genv.LXSplorer_Shutdown) == "function" then pcall(genv.LXSplorer_Shutdown) end
 	K.alive = true
 	K.conns = {}
 	K.ownedGuis = {}
@@ -84,7 +84,7 @@ do
 	function K.sig(signal)
 		return { Connect = function(_, fn) return K.keep(signal:Connect(fn)) end }
 	end
-	genv.LX_Shutdown = function()
+	genv.LXSplorer_Shutdown = function()
 		K.alive = false
 		for _, c in ipairs(K.conns) do pcall(function() c:Disconnect() end) end
 		table.clear(K.conns)
@@ -394,7 +394,7 @@ local function envFn(...)
 	return nil
 end
 for _, n in ipairs({ "getcustomasset", "writefile", "readfile", "isfile", "isfolder", "makefolder", "listfiles", "delfile" }) do
-	if not envFn(n) then warn("[LX] your executor is missing " .. n .. ", LX can't run here") return end
+	if not envFn(n) then return end
 end
 Services.setClipboard = envFn("setclipboard")
 Services.saveInstanceFn = envFn("saveinstance")
@@ -572,7 +572,7 @@ end
 local function iconForClass(cls) return iconCache[cls] or K.V[cls] or K.CLASS_ALIAS[cls] or K.V.Instance end
 
 local StudioIcons = {
-	enabled = true, folder = "LX/icons/studio2x",
+	enabled = true, folder = "LXSplorer/icons/studio2x",
 	available = {}, assets = {}, state = {}, queue = {}, active = 0, changed = false, byClass = {}, fs = {},
 }
 for name in string.gmatch(K.STUDIO_ICON_NAMES, "%S+") do StudioIcons.available[name] = true end
@@ -608,7 +608,7 @@ function K.studioLoad(name)
 	local okF, has = pcall(fs.isfile, path)
 	if not (okF and has) then
 		local data = K.studioDownload(name)
-		if not data then warn("[LX] color picker failed to load") return end
+		if not data then return end
 		if not pcall(fs.writefile, path, data) then return false end
 	end
 	local ok, asset = pcall(fs.customAsset, path)
@@ -740,7 +740,7 @@ end
 function K.remoteImage(url, path)
 	K.remoteCache = K.remoteCache or {}
 	if K.remoteCache[path] then return K.remoteCache[path] end
-	K.ensureFolder("LX/ui")
+	K.ensureFolder("LXSplorer/ui")
 	local okF, has = pcall(isfile, path)
 	if not (okF and has) then
 		local ok, data = pcall(function() return game:HttpGet(url) end)
@@ -874,7 +874,7 @@ local function paneHeader(parent, text, font)
 		Size = UDim2.new(1, 0, 0, K.TITLE_H), BackgroundColor3 = Configuration.Theme.Main,
 		BorderSizePixel = 0, AutoButtonColor = false, Text = "",
 	}, parent)
-	h:SetAttribute("LXAlpha", true)
+	h:SetAttribute("LXSplorerAlpha", true)
 	new("TextLabel", {
 		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0),
 		Font = font or Enum.Font.SourceSans, TextSize = 14, TextColor3 = Configuration.Theme.Text, Text = text,
@@ -956,7 +956,7 @@ local function scroller(parent)
 end
 
 UI.explorerPane = new("Frame", { Name = "Explorer", BackgroundTransparency = 1, ClipsDescendants = true }, nil)
-UI.titleBar = paneHeader(UI.explorerPane, "LX")
+UI.titleBar = paneHeader(UI.explorerPane, "LXSplorer")
 local explorerFilterBar, explorerFilter, explorerExtra = filterBox(UI.explorerPane, K.TITLE_H, "Search", { history = true, more = true })
 UI.explorerFilterBar = explorerFilterBar
 UI.explorerFilter = explorerFilter
@@ -975,7 +975,7 @@ UI.props.Position = UDim2.fromOffset(0, K.TITLE_H + K.FILTER_H)
 UI.props.Size = UDim2.new(1, 0, 1, -(K.TITLE_H + K.FILTER_H))
 
 local Panes = {
-	explorer = { id = "explorer", title = "LX", frame = UI.explorerPane, header = UI.titleBar },
+	explorer = { id = "explorer", title = "LXSplorer", frame = UI.explorerPane, header = UI.titleBar },
 	props = { id = "props", title = "Properties", frame = UI.propsPane, header = UI.propsHeader },
 }
 
@@ -2328,7 +2328,7 @@ end
 K.Api = { props = nil, cache = {}, known = nil }
 do
 	local Http = game:GetService("HttpService")
-	local CACHE = "LX/api_props.json"
+	local CACHE = "LXSplorer/api_props.json"
 	local API_URL = "https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/Mini-API-Dump.json"
 	local function httpGet(url)
 		local ok, res = pcall(function() return game:HttpGet(url) end)
@@ -2370,7 +2370,7 @@ do
 				if i % 120 == 0 then wait() end
 			end
 			dump = nil
-			if not isfolder("LX") then makefolder("LX") end
+			if not isfolder("LXSplorer") then makefolder("LXSplorer") end
 			local okE, json = pcall(Http.JSONEncode, Http, { v = 1, classes = data })
 			if okE then pcall(writefile, CACHE, json) end
 		end
@@ -2720,7 +2720,7 @@ end
 
 local function notify(msg)
 	pcall(function()
-		game:GetService("StarterGui"):SetCore("SendNotification", { Title = "LX", Text = tostring(msg), Duration = 4 })
+		game:GetService("StarterGui"):SetCore("SendNotification", { Title = "LXSplorer", Text = tostring(msg), Duration = 4 })
 	end)
 end
 
@@ -3423,7 +3423,7 @@ function Actions.copyPath()
 	for _, i in ipairs(list) do if i then out[#out + 1] = pathOf(i) end end
 	if #out == 0 then return end
 	local p = table.concat(out, "\n")
-	if Services.setClipboard then pcall(Services.setClipboard, p) else print("[Delve] " .. p) end
+	if Services.setClipboard then pcall(Services.setClipboard, p) end
 end
 
 local function dumpInstance(inst, depth, out)
@@ -3446,10 +3446,10 @@ function Actions.saveToFile()
 	local inst = State.selected
 	if not inst then return end
 	local fname = (inst.Name:gsub("[^%w_%-]", "_"))
-	K.ensureFolder("LX/Saves")
+	K.ensureFolder("LXSplorer/Saves")
 	local out = {}
 	dumpInstance(inst, 0, out)
-	local path = string.format("LX/Saves/%s_%d.txt", fname, os.time())
+	local path = string.format("LXSplorer/Saves/%s_%d.txt", fname, os.time())
 	local ok = pcall(writefile, path, table.concat(out, "\n"))
 	if not ok then notify("Save failed") end
 end
@@ -3714,7 +3714,7 @@ do
 	local getBytecode = envFn("getscriptbytecode", "dumpstring")
 	local getHash = envFn("getscripthash")
 	local getConns = envFn("getconnections")
-	local ROOT = "LX/Exports"
+	local ROOT = "LXSplorer/Exports"
 
 	local function stamp() return os.date("%Y-%m-%d_%H-%M-%S") end
 	local function gameTag() return K.sanitizeFileName(("%s_%d"):format(game.Name ~= "" and game.Name or "Game", game.PlaceId)) end
@@ -3779,7 +3779,7 @@ do
 		return "-- failed to decompile: " .. tostring(src)
 	end
 	local function header(s)
-		local h = { "-- " .. fullName(s), "-- Class: " .. s.ClassName, "-- Dumped by LX on " .. os.date("%c") }
+		local h = { "-- " .. fullName(s), "-- Class: " .. s.ClassName, "-- Dumped by LXSplorer on " .. os.date("%c") }
 		if getHash then local ok, hh = pcall(getHash, s) if ok and hh then h[#h + 1] = "-- Hash: " .. tostring(hh) end end
 		return table.concat(h, "\n") .. "\n\n"
 	end
@@ -3838,7 +3838,7 @@ do
 
 	function FileTools.log(msg)
 		local line = os.date("[%H:%M:%S] ") .. tostring(msg) .. "\n"
-		local path = "LX/log.txt"
+		local path = "LXSplorer/log.txt"
 		if appendFn and pcall(appendFn, path, line) then return end
 		local prev = ""
 		if readFn then local ok, r = pcall(readFn, path) if ok and type(r) == "string" then prev = r end end
@@ -5262,7 +5262,7 @@ function K.window(name, title, font)
 		local BAR = Color3.new(0.20392157137394, 0.20392157137394, 0.20392157137394)
 		local HOV = Color3.new(0.12549020349979, 0.12549020349979, 0.12549020349979)
 		win.dex = true
-		header:SetAttribute("LXAlpha", true)
+		header:SetAttribute("LXSplorerAlpha", true)
 		header.Size = UDim2.new(1, 0, 0, H)
 		header.ZIndex = 2
 		header.BackgroundColor3 = BAR
@@ -5336,7 +5336,7 @@ K.edits = setmetatable({}, { __mode = "k" })
 
 function K.editPath(script)
 	local okN, full = pcall(function() return script:GetFullName() end)
-	return "LX/Edits/" .. K.sanitizeFileName(okN and full or script.Name) .. ".lua"
+	return "LXSplorer/Edits/" .. K.sanitizeFileName(okN and full or script.Name) .. ".lua"
 end
 
 function K.loadEdit(script)
@@ -5350,7 +5350,7 @@ end
 
 function K.saveEdit(script, source)
 	if not script then return false end
-	K.ensureFolder("LX/Edits")
+	K.ensureFolder("LXSplorer/Edits")
 	return pcall(Services.writeFile, K.editPath(script), source)
 end
 
@@ -5416,7 +5416,6 @@ function K.runEdited(script, source)
 		local ok, e = xpcall(fn, debug.traceback)
 		if not ok then
 			failed = tostring(e)
-			warn("[LX] " .. script.Name .. ": " .. failed)
 		end
 	end)
 	K.edits[script] = { thread = thread }
@@ -5592,7 +5591,6 @@ local function buildScriptWindow()
 		if not okC then ok, msg = false, ok end
 		pcall(K.saveEdit, target, text)
 		local okS, errS = pcall(showSource, text)
-		if not okS then warn("[LX] couldn't show saved script: " .. tostring(errS)) end
 		if not ok then notify(tostring(msg)) end
 	end)
 
@@ -5613,7 +5611,7 @@ local function buildScriptWindow()
 	sw.saveBtn.MouseButton1Click:Connect(function()
 		local text = currentText()
 		if not text then return end
-		local folder = "LX/Scripts"
+		local folder = "LXSplorer/Scripts"
 		K.ensureFolder(folder)
 		local name = "script"
 		if sw.target then
@@ -6397,7 +6395,7 @@ do
 			paint(l, "TextColor3", key)
 		end
 		label("Low FPS detected", Enum.FontWeight.SemiBold, UDim2.fromOffset(20, 16), UDim2.new(1, -40, 0, 26), 22, "TabText")
-		label("Enable Low Performance Mode? It turns off most animations so LX runs smoother.",
+		label("Enable Low Performance Mode? It turns off most animations so LXSplorer runs smoother.",
 			Enum.FontWeight.Regular, UDim2.fromOffset(20, 50), UDim2.new(1, -40, 0, 44), 16, "Text")
 		local function btn(txt, x, primary)
 			local b = new("TextButton", {
@@ -6443,7 +6441,7 @@ UI.previousToggle = UI.guiParent:FindFirstChild("delvetoggle")
 if UI.previousToggle and UI.previousToggle ~= UI.toggleGui then UI.previousToggle:Destroy() end
 UI.toggleBtn = new("TextButton", {
 	Size = UDim2.fromOffset(44, 44), Position = UDim2.new(0, 12, 0.5, -22), BackgroundColor3 = Configuration.Theme.Header,
-	AutoButtonColor = false, Font = Enum.Font.SourceSansBold, TextSize = 13, TextColor3 = Configuration.Theme.Text, Text = "LX",
+	AutoButtonColor = false, Font = Enum.Font.SourceSansBold, TextSize = 13, TextColor3 = Configuration.Theme.Text, Text = "LXSplorer",
 }, UI.toggleGui)
 new("UICorner", { CornerRadius = UDim.new(0, 8) }, UI.toggleBtn)
 stroke(UI.toggleBtn)
@@ -6477,7 +6475,6 @@ task.spawn(function()
 	while not K.themeReady and os.clock() - waitedAt < 10 and K.alive do task.wait() end
 	if not K.alive then return end
 	local okPre, errPre = pcall(Cache.preload, K.introProgress)
-	if not okPre then warn("[LX] loading step failed: " .. tostring(errPre)) end
 	Cache.ready = true
 	if not K.alive then return end
 
@@ -6605,7 +6602,7 @@ local function bootApps()
 	end
 
 	local Settings = {
-		folder = "LX", file = "LX/settings.json", themeFolder = "LX/themes",
+		folder = "LXSplorer", file = "LXSplorer/settings.json", themeFolder = "LXSplorer/themes",
 		data = { theme = "2021 Studio", image = "", imageTransparency = 0.6, panelTransparency = 0.25 },
 	}
 
@@ -6800,7 +6797,7 @@ local function bootApps()
 		if o:IsA("GuiObject") then prop = "BackgroundTransparency"
 		elseif o:IsA("UIStroke") then prop = "Transparency"
 		else return end
-		if o:GetAttribute("LXNoAlpha") or (o.Parent and o.Parent:GetAttribute("LXNoAlpha")) then return end
+		if o:GetAttribute("LXSplorerNoAlpha") or (o.Parent and o.Parent:GetAttribute("LXSplorerNoAlpha")) then return end
 		local wt = math.clamp(tonumber(Settings.data.windowTransparency) or 0, 0, 0.9)
 		if alphaBase[o] == nil then
 			alphaBase[o] = o[prop]
@@ -7060,7 +7057,7 @@ local function bootApps()
 		local T = Configuration.Theme
 		local UIS = game:GetService("UserInputService")
 		local row = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, touchH(26)), LayoutOrder = nextOrder(), ZIndex = 3 }, scroll)
-		row:SetAttribute("LXNoAlpha", true)
+		row:SetAttribute("LXSplorerNoAlpha", true)
 		local lbl = new("TextLabel", {
 			BackgroundTransparency = 1, Position = UDim2.fromOffset(8, 0), Size = UDim2.new(0.45, -8, 1, 0),
 			Font = Enum.Font.SourceSans, TextSize = 15, TextColor3 = T.Text, Text = "",
@@ -7071,16 +7068,16 @@ local function bootApps()
 			Position = UDim2.new(0.45, 0, 0.5, -3), Size = UDim2.new(0.55, -14, 0, 6), ZIndex = 4,
 		}, row)
 		new("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
-		track:SetAttribute("LXNoAlpha", true)
+		track:SetAttribute("LXSplorerNoAlpha", true)
 		local fill = new("Frame", { BackgroundColor3 = T.Accent, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1), ZIndex = 5 }, track)
 		new("UICorner", { CornerRadius = UDim.new(1, 0) }, fill)
-		fill:SetAttribute("LXNoAlpha", true)
+		fill:SetAttribute("LXSplorerNoAlpha", true)
 		local knob = new("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0, 0.5), Size = UDim2.fromOffset(12, 12),
 			BackgroundColor3 = T.Text, BorderSizePixel = 0, ZIndex = 6,
 		}, track)
 		new("UICorner", { CornerRadius = UDim.new(1, 0) }, knob)
-		knob:SetAttribute("LXNoAlpha", true)
+		knob:SetAttribute("LXSplorerNoAlpha", true)
 		local dragging = false
 		local function paint()
 			local v = math.clamp(tonumber(Settings.data.windowTransparency) or 0, 0, 0.9)
@@ -7231,14 +7228,14 @@ local function bootApps()
 	local Fishy = { lib = nil, loading = false }
 	local FISH_URL = "https://raw.githubusercontent.com/Civilation/Fishilizer/main/Fishilizer.lua"
 	local FISH_LOGO_URL = "https://files.catbox.moe/5uumgz.png"
-	local FISH_LOGO_PATH = "LX/fishilizer.png"
+	local FISH_LOGO_PATH = "LXSplorer/fishilizer.png"
 
 	function Fishy.logo()
 		if Fishy.logoAsset then return Fishy.logoAsset end
 		if not isFile(FISH_LOGO_PATH) then
 			local okGet, data = pcall(function() return game:HttpGet(FISH_LOGO_URL) end)
 			if not okGet or type(data) ~= "string" or #data < 64 then return nil end
-			K.ensureFolder("LX")
+			K.ensureFolder("LXSplorer")
 			writefile(FISH_LOGO_PATH, data)
 		end
 		local ok, id = pcall(customAsset, FISH_LOGO_PATH)
@@ -7441,7 +7438,7 @@ local function bootApps()
 						pcall(function() dead.restore:Destroy(); dead.frame:Destroy() end)
 					end
 				end
-				if not ok then warn("[delve] Fishilizer window failed to build: " .. tostring(win)) return end
+				if not ok then return end
 				UI.fishWin = win
 				pcall(applyBackdrop)
 			end
@@ -7457,7 +7454,7 @@ local function bootApps()
 						pcall(function() dead.restore:Destroy(); dead.frame:Destroy() end)
 					end
 				end
-				if not ok then warn("[delve] Settings window failed to build: " .. tostring(win)) return end
+				if not ok then return end
 				UI.settingsWin = win
 				pcall(applyBackdrop)
 			end
@@ -7600,8 +7597,8 @@ local function bootApps()
 				end
 				if app.iconData then
 					local ok, id = pcall(function()
-						K.ensureFolder("LX/ui")
-						local path = "LX/ui/app_" .. K.sanitizeFileName(app.name) .. "_" .. #app.iconData .. ".png"
+						K.ensureFolder("LXSplorer/ui")
+						local path = "LXSplorer/ui/app_" .. K.sanitizeFileName(app.name) .. "_" .. #app.iconData .. ".png"
 						if not isfile(path) then writefile(path, app.iconData) end
 						return getcustomasset(path)
 					end)
@@ -7628,7 +7625,7 @@ local function bootApps()
 					if ok and G.setImage(ic, id) then return end
 				end
 				if app.url then
-					local ok, id = pcall(K.remoteImage, app.url, app.cache or ("LX/ui/" .. K.sanitizeFileName(app.name) .. ".png"))
+					local ok, id = pcall(K.remoteImage, app.url, app.cache or ("LXSplorer/ui/" .. K.sanitizeFileName(app.name) .. ".png"))
 					if ok and G.setImage(ic, id) then return end
 				end
 				if app.logo then
@@ -7689,7 +7686,6 @@ local function bootApps()
 				task.defer(function()
 					local ok, err = xpcall(app.open, debug.traceback)
 					paint()
-					if not ok then warn("[delve] couldn't open " .. app.name .. ": " .. tostring(err)) end
 				end)
 			end)
 		end
@@ -7962,7 +7958,7 @@ end
 bootApps()
 
 do
-	local LX_PNG = {
+	local LXSplorer_PNG = {
 		plug = "\137PNG\013\010\026\010\000\000\000\013IHDR\000\000\000\128\000\000\000\128\008\006\000\000\000\195>a\203\000\000\011rIDATx\218\237\157_l\028G\029\199\127\191\153\217\189\245\222\197\220\157e'q\188'\017\019\170JE\188\164\240@\132\146\022A\016}BJ\133\010\010\237\011oH \129\144\010\253#\241P\009Z\229\161\226\161<T\244\165BW\164\138J\165\149\010\248T5\180\165\240\208\230\161i\010i\226;\215\190\248\226\243\217\190\245zwg~<d\174\186\184\249\227\020\231\246vo>\210\201Q|\235\217\153\223w~3\243\155\217\223\002\024\012\006\131\193`0\024\012\006\131\193`\024\0210\237\021 \034V\171\213\024\000\192\242\2422\221\127\255\2532K\229\025\174o\008$\162O\009\024\017\225\177\199\030ci/\207x\128\155\024\003\017I\247\194\195DtPJ\137B\136\243\147\147\147\239l\255N\218\2023\220\196\024\000\000\011\011\011\149f\179\249\218\210\210\018\173\172\172\208\202\202\0105\155Mj6\155\127_\092\092\252<\000\236J\207\028ty\198\003\236\192\024KKKn\024\134oMLL\220\213j\181\174\026\131'&&x\187\221\254\192u\221\175LLL\172k7Mi(/\009R\165\216Z\173\198\017\145\2268\254~\185\092\190\171\213j\133\136\200\251?\173V+,\151\203wlnn>\168\013\193\211R\158\017\192\206{\230\017)\165B\196O\221?c\140EQ\164\136\232H\239\235i+\207\008\224:\028=z\148\180A,\034b7\152\1733\198\152H[yF\000\006#\000\131\017\128\193\008\192`\004`0\0020\024\001\024\140\000\012F\000\006#\000\131\017\128\193\008\192`\004`0\0020\024\001\024\140\000\012F\000\006#\000\131\017\128!\173\002 \034FD\130\136\248N>\000\192\137\136#\226M\207\223!\162\232\191\230\179|\006P\158\168V\171\137\158\034\022I\026\031\017\021\000\168[\184L\002\000\212\235\245\243\1401 \034@\252\212\163\013\1969\007\034\250\008\017e\239\154\207\200@\202\235k\139\129\131I\026\191^\175\1275\151\203\157\008\195p\154\136@)u\195\251a\140!\000H\165\212!\203\178\238\014\195\144p\155E\136\136l\219\1988\142\255\141\136\031\000\000WJ}\166\163\218\183\179<\2069Y\150\181\020E\209\159fff\254\145\148\0080)\227_\188x\241'\174\235\158\178m\027\148\186\181z\135a\008\155\155\155\215\234\141\1892`ll\012l\219\222\149{\190]\2291\198 \138\034\240}\255\023\149J\2297I\136\000\1470\254\199\031\127|\183\016\226\159A\016\144R*\198\235\181\236\141\255\014\187\201w\212n5\230m,\143\016\145\231\243y\022\004\193\145\003\007\014\156\174V\171|\144\143\156\015z\014\192\000@\197q\252\131|>O\190\239\199\136h\221\178jw\160\023m\176]\153\228\222\206\242\148R\017\231\028\165\148'\001\224\244\137\019'p\208\006\025\168\019\208?\247J)\241V{~VWbRJd\140Mmk\163\236.\003\181\1874\166\191\218\195$\178\010`\009U\216\004\160\134\196\022\003-\180V\171\245\186\253VR\235\222!\236\253\132\136\138\136\182F&\016$\132xM\008q\146\136b]y\028U\227\019\145\180m[0\198\254\186\173\147d7\014\000\000\188^\175\255ejj\234\027\151/_\006\034\026\213\222\015\229r\025Z\173\214\235333\223\004\128H'\153\160,\011\000\181\242\221\165\165\165_#\226w\1950,\143\154\023@D\178m\187\013\000\127\230\156\255jrrr=\137DSI\133\130\185\014\130\168f\179Y\224\156\127\206\247\253\145\234\253\174\235\002\017\173\245\012\015\000L\239%\024\012\025\245\000=\023\215l6\1430\198*[[[r\212\151\132D\164r\185\028WJ\205\239\221\187\247\141A\015\003I\132\130e\020E\191\220\191\127\255\241v\187\013\156\243\145\238\129RJ(\149J\176\184\184\248*\000|\187\215F\153^\006*\165\150;\157\142\236v\1871\017\137Q\022\000\034\198\1401\161\148Z\206|\028\160o\141\187\1939\231t\197\223\141\180\011 \034\226W\220\224F\018q\128\129\142\191G\143\030\237\169~\025\012\219=\193r\127\027eR\000\159\020\202X\227:\199\171F\209\240@D\192\024k$b\139A{<\253\243B\020Ep\189\228\139#6\004\176(\138\000\000.lk\163\236\010@J\249\145\239\2511c\140A\202R\171\238v{0\198\152\239\251\177\148\242\163\145\017\128\231y\243\136\216\176,\011hT7\002\244\004\208\178,@\196\134\231y\243\153\023\000\034R\181Z\229\136\024\034\226\153\092.\007\163\238\001r\185\028 \226\025D\012u\219d\251DP\223\153\183\211:\0084\210\002\208mpz[\219dW\000/\188\240\002\001\000\008!\230\244\006\208(\199\001\184\239\251 \132\152\235o\155\129z\229\004\198\189\222v\176]\175\215\223\183m\251`\016\004j\212\246\004\136H9\142\195\1940<\239y\222\157\136\024&\177\029<\240FGD\154\155\155\019z\030\240\202\216\216\024@B\007\034\019F\141\141\141\001\034\190\130\136\161n\147\236{\000\173~\142\136raa\225kB\1367677G\210\003\140\141\141\1778\142\143\0288p\224t\175M2?\007\208^@\018\017NOO\191\021\004\193{\174\235\034\012p\007l\008\144\174\235b\016\004\239MOO\191\165]\127\034\245O\178\215qD\148\156\243gr\185\028\222\234\243\129\169\246\253JA.\151C\206\2493\218\240\137M\132\019\011\198\247\206\000\182\219\237\241\141\141\141\015\132\016SQ\020\017d?i\133\178,\011\2278\190T(\020\238(\149Jk\189\185\209Hy\000D\164Z\173\198\203\229r\135\136\158.\020\010HD\153w\003D\164t]\159.\151\203\157\222\171\233F\206\003\244{\129\243\231\207\143\219\182\253>\231|_\198\189\128\178,\011\165\148Ka\024\222y\240\224\193D{\127\210s\128^\197\217\236\236l\135\136\030\205\231\243\153\246\002D\164t\029\031\157\157\157\237\192\149\147\192\137FB\019\239i\136(\171\213*\247<\239\217N\167\243\230\158={\004\017\201\012\026_\238\217\179Gt:\1577=\207{V\199\253\019\175'\014I\2270DTKKK_\002\128\127EQ\196\165\148,+\143\143\235c_\202\178,\009\000\135\247\237\219w&\201\188@C\229\001\180\023PD\196\247\237\219w&\012\195\135\139\197\034\007\1288C\014 .\022\139<\012\195\135\181\241\249\176<\028;4\147-D\148sss\162R\169<\213n\183_*\149J\150R*\245\034PJ\197\165R\201j\183\219/U*\149\167t\200wh\134\184\161\154m\215j5ED\172P(\156\236v\187g\011\133\130PJ\201\020\027_\022\010\005\161\235r\146\136X\173V\027\170I\238\208\141\177})\228\014Y\150\245\006\000L\005A \211v|\156\136\164\2278\028\000.EQt\196\243\188\015\135e\220\031Z\015\208?\031\240<\239\195n\183{\031\034\174:\142\195\211\228\009\148R\210q\028\142\136\171\221n\247>m|>\140I1\1342\224\210\155\015\204\206\206\190\019\134\225q\000X\201\231\243\156\136\226\020\244\2528\159\207s\000X\009\195\240\248\236\236\236;\1956\238\015\189\000\000\000\142\029;\022\207\205\205\009\207\243\222\246}\255\030\165\212\133\241\241q1\204\019C\165T\172\239\241\130\239\251\247x\158\247\246\220\220\1568v\236\216\208\2223\166\160GqD\148\243\243\243\007,\203z>\159\207\127\189\221nK\189\133\202\134\228\030\021\034R\169T\226\221n\247\245(\138\030\168T*\011I\237\241g\194\003\244\015\007D\196+\149\202\194\217\179g\239\237v\187\167\092\215\229\142\2270\034\138\147<VNW\136\029\199a\174\235\242n\183{\234\236\217\179\247\166\197\248\169\240\000\253\171\003\184\146U\132\234\245\250w,\203:\229\186\238\161\213\213U\208\195\002\031T\228P\139N2\198D\177X\004\223\247?\140\162\232\167\158\231\189\1727\1840-Y\208R\179\235\214kP\189Bxymm\237p\016\004O\216\182\221-\022\139\1301\134z\146x;\027^\017Q\204\024\195b\177(l\219\238\006A\240\196\218\218\218am|\222\127\175\169h\2154\006X\250\221\235\165K\151\190(\165\252\025\017=\144\207\231\243\190\239\195\214\214\214\174?xJD\144\203\229\192u]\232v\187]D|\158s\254\228\212\212\212\185\237\247\148&R\187\217\178=\177R\179\217\252\130R\234A\034\250\158Rj6\142c\218\173!Ao\230 \231\252\191\136\248G\198\216\031\246\238\221\251\159\158\225\001@%\189\173;r\002\21667\248\228P%\0179\011\011\011/:\142s|cc\227\255\142 \018\145,\020\010<\012\195\191\237\223\191\255>D\012\250\012Oi\207x\154\250\1477\136\168\244J\129\157;w.\135\136A\020E\151\133\016\187v\210\134s\014J\1696\034\006\231\206\157\203\233\144\174\204B\186\219\204\228\231\209!\228\152\136\176^\175\139\221\092\029\234\191%\244\176\019g)\207q\230\206\222\233\199\206n\199xLi\029\231GJ\000\006#\000\131\017\128a\228&\129W\169\1541\208\203B\213?\031\216i\092`\219\028B\233L^h<\192\144\211K\178\136\136\175:\142\1959\2316\231\028\133\016(\132\192\029\190\253\011z\223\215\215Z\174\235r\000x\181\191\140\172\144\169\236\028\207=\247\156\034\034\028\031\031\127wqqQ\216\182}HJ\169\148R\145~%\011\222(0\164{zHD]\034\010\001`\203\178\172\246\198\198\198\239fff~\011\000\248\208C\015e\234\153\133Lgj\092^^\222\2278\142\027\004\001\207\229r\209\218\218\218#\133B\225\199\171\171\171\241\246\023B\019Q\092,\022\133\239\251\191G\196G\132\016\194q\028\025\004\129?99\185n\230\000)Co\206\172\003\192'\198k4\026\2357\026\006\180\007\216\152\158\158\190\212\255\255\131~\155\167\017\192n\1846\157\132\162\175\158q\163\209\216\201k\224\185\190N\128~8%\203o\242\200\2442P\191\146\141@G\241v\024!\188\234\154,F\255L\028\192`\004`0\0020\024\001\024\140\000\140\000\012F\000\006#\000\131\017\128\193\008\192`\004`0\0020\024\001\024\140\000\012F\000\006#\128,\161\015z\208\013~OJ)4\002\200(\156\243\139\000\128\215:\023\162_f\141\0000o\004\1441\030\127\252\241^v\145\151\214\214\214|\219\182y/\191P/\207\143eYl}}=\228\156\191\168/\027\1977\153e\151j\181\202\001\000\026\141\198\015WVV\232\242\229\203\212h4\168\209hP\171\213\162v\187M\245z\253G\253\223\029\005Fj\188\235\165j\157\159\159\255\150\2278?\015\195\240\203D\132\182m\159\009\195\240I\157\231\135e\233\241o\1955D\208\251\247\234\234j\185\211\233L\092\235w\134\140\015\007\253\198&\034\236e\2482\140\216\1780\171\015}\026\012\006\131\193`0\024\012\215\229\127V\2248>\153\246\221!\000\000\000\000IEND\174B`\130",
 		fishilizer = "\137PNG\013\010\026\010\000\000\000\013IHDR\000\000\0000\000\000\0000\008\006\000\000\000W\002\249\135\000\000\006\134IDATx\218\205Z\127\136\165U\025~\222\247|3\1873;\173;\235\182j[m\229F\027Z\168k\178E\025\137h\025\129\017\139%f\255\024i\022\244CEQZJ\011\255I\148 \132~\016\139`;+\180\020\248\135T\011\017I6\160\225R\160\224j?XB\154`\092\028\247\158\247}\159\254\184\231\2199s\157\025\199\185w\230\206\007\135\251}\243}\247|\207y\207\243>\239s\206\029\193\006:H\010\000\005 \000BD\226\013\158W\217 \160\005\128\138\136\245\220\219\002\224m\000\206\0050\009\160\0010\011\224$\128\127\138\200\236\176\1937$\155\246\250\248\241\227\163$/w\247\251\221\253/\238~\154K\028nnn\254\148\012\009\184\002@K\017\146{#\226K\000\190\168\170\187\000\192\221_\020\145'I\254\021\192K$\255\2154\141\187\251$\128w\001\248\016\128\143\173;]H\166\234z\191\187O\205\135\213\159\166\2177I\190o\133\253\165\181\198,\139\189\140\228\005\238~x\030\183?F\242\163KPl\164|\166\210\154^\234\173G\212\1556)I\222W\001?\218\233t\246\213\212*\224\180$\247J\004`\237\185\014\0009\231+\220\253o\005\249\241\156\243\167\234\217)m\232\170\248:~NOO\143\184\251\015\170\168\127\151\228\230*\226\186\161@\183\188-\215\231\187\251\031\010\240g;\157\206\135\2153\001WS\144PQ\230\211\238\254r\001\255\019\146\019Ub\202\134\004\159s\254\140\187\255\180\000&I\154\217W7l\212+\218H\206\249\170\005\149\210\253\191$\175\092\235\168\235\128\250\016U\189\010@\184\217+\000: O\138\200oK\212]D\184\225\006P\162\202b\009&\001\168\168\190\005\192(D\254U\192\179\002\191\146Y\144\129r{\169\169\175\011\148\153\029,\006\235Ew\127\206\221\127777w~yF\215=!\219\194\178\018O\227\238\247\150d\2533\201s\248\0287\013+\025\181\0234\201\243Hn\175\149\166\007\252\253]\240\254G\146\147=\003\212u\005_\157O\228\156\175q\247G\205\236(\201\201\214\155,\000\159\243\003%\242\199fff\206\026\154L\182/%\185\135\228C\238\254B\225\243\171$wWR\169U\228\127T\164\242\137\178j\194\212\212\212\2404>\231\252\009\1463\149\134\159f\135\251+\013\175\193?\092\158y\156\228X\239\012\0148\023u1\027\189\192R\147\220mf/\151\168?[hqs\233d\1646\092\158\253g\229\254oN\1568\177y@\224\229\224\193\131z\236\216\177\026\216\138\165T\220\253aU\253\138\187\127'\165\244\235\136\184%\165ts\145H\182-\034~\161\1707\186\251\209\148\210u\000rwU\184\252\206\193R\209=r\228\136\0308p`\201\221\135\226\157v\002\216if;\155\1669\219\179o\131b\011\201QUM\000 \150mFTTUw\003x\165\167\160\016\128\132\217!m\154\235#\2261U\189\030\128\189I\240R)Y\018\145\220\003v\018\192\133\238~\137\136\092Lr\175\000\239 \176#\1654\186|4\034hf\255&9Z\241m\132\164\020/?U8\255h\235{V@\155v\171DH\234\244\244\244H\143\210\009\201\139\204\236\219\238\254\184\153\253g\177\157\135\240\160Yv3\203f\214Y\172\193\205\255N\210r\206W\244De\147\187\255\170\128\127\164\146\210\021\129o\019\175\190\209\233t\246\185\251}f\246\140\187/\000k9{\011\202\205\178es3s\179\028f\182d\131\153}\185H\207?r\206\159%\249\246\178[\240\251\002\254P\165\008\250f\129\159:u\234\0923\187\213\221\255T\131.\000:6\0156V\211\132\164\132\217C\2184_/\148\130h\023gD\252\092Uoj9\188\028\231+~[\185~\127D\220\002\242\011\154\210\142\034\193\004i\016\017\144\009\210\191o\019\146*\034A\242\218\136\184\014\192\187U\245$\128_\138\200\225V\210\150\179\195$\147\136x9\127oD\220\001\224\006U\221\092\128\231\226|\169\034\013D\192\008#\144\0061\128%\001\146\1487\242\241-x\146[\034\226N\000\223P\213\137\136\000\201\140.H\001\192\148\146\134\199i\130\158R\026w\247\232\215>\171\136PDXom\180\231+\000\175\034\226\236t>\030\017O\169\234=\002L\184{\006\025e3V\004\240\148\146F\196\019\217\242\007RJ{#\226\145\148\146\002\136\190f\160\031\003(\034af\223R\213\031\138\008\204,\139H\170\251\149RK\008XJ\233\002\017y\190|\127\171\187\191\160\170g\135G@V\135\165o\015#\034o%\233]\176\210\000\008\240u\015\181\002\240Z\173\170\000L\164\173\151\235\188\164,\137\175)\165\187\204\236R\000\135E\005)\165\006\002\002\232&u7\207\092U7E\196\247I\158Er,\034\190\151R:\199\205\028\178z9\234[\199z\020h?\128\219H~NDP\1464J\0343\165\164\238~RD\178\170\190\211\205\216\175\148\014d\001]\172\182T5\224#\017q\187\170^{F\255\187G\164\148Z[\238\003\161p\191\191\176\244\244\209\254pq\186\220\191\028\192\237\017\241\201R\197\005\004\011\197\006\178\134X\151->7{^S\2183\168\168\215G\179\202\200\011\128&\034\030T\213\237\017\241j\171\249\017\001\237Z\145\022\232$\201\221\133F\003_\1855}\204\156\147|2\034\014\169\206\255\218Y\192/8JU^\147\157\185~\010\153\136\0089\199\247`3~\012\224\234\018\229\215*\251\208\190c\245\158\135\203\163\148AI\168\153\221*\034w\171\234yg\012\0927qu\016\174s-\235\128\182\251\159$wF\196\215\000\2204?\016# V\222\165\131\022\142\129uV\207\198\236\236\236\142\241\241\241\207\139\200\013\000.\171s\164(Q\020\003\161 \005\0348\2439L\025\237]\212\148\191\237\003pMD\092I\242\162\148\210\214E\190\135\136`\169\218lM \215{\000=\180\210\222-\019\146\187\000\092\008\224\146\136\248 \200=\004v\001\216\158R\2184T\010-3#\203\254\247\009\201\137\185\185\185\237ccc\219\000l3\179\173M\211\140\187\251h\139/\165\004w\151\161U\226%\006\1962\168\190\234\195\255\001\248\002\182k.\250o$\000\000\000\000IEND\174B`\130",
 		settings = "\137PNG\013\010\026\010\000\000\000\013IHDR\000\000\0000\000\000\0000\008\006\000\000\000W\002\249\135\000\000\009\000IDATx\218\237Z]h\028\215\021>\231\222;?\187\179kE\165i$%H\179R\012u$\008\193\161I\211$\245C\233S\250V\139\166\142!\182i\011\237K\009\165\004S\144\004-\197\133\2469\015\141cpR\138\212\183&/\165`A\176\221\0229\201\131\228\020\138\178\179\1556\177\171\148\172\228\249\217\249\185\231\244e\166(\155\217\213\202V\009\165\1900O{\231\252\159\243\157sf\001\238\158\207\246\224A\018cf\004\000\181\177\177QJwvv\150\001 CD\190k\250\131\244\0003\011D\164\205\205\205\251\000\2249\2114\235ZkFD\204\127g)%&I\178\003\000\175\205\204\204\220,\222\185S\222\234\128\194\006\000\000\012\195\248\241\196\196\196\011\221n\023\132\016\159\184GD`Y\022|\240\193\007\019\000\240\163\226\221;\013'u nD\164\173\173\173z\020E_\234t:\153\239\251)\034\202\030Eu\173V3\016\241\177\173\173\173:\034\222\218\173\252g\169\000\002\000\007A\240y\000\152\140\227X\001\128,\009O\142\227\024\137h2\191{\171x\247N\152\139!\195D^\186tI\149Y\236\218\181k\146\153\149Rj\1960\140\007\2104\165\034\246{\188\004i\154\146a\024\015(\165F\152Y]\187vM\150\133d\206K\030\136\007\022\022\022\004\034\234\221\202\000\000!\034\231\137\152\002\0004\155\205#\163\163\163b{{;\235c\024DD\2378\142\218\217\2179\130\136\239\236.\000\185q\010^Y\193{ii\137n\187\010\021I\230y\222W\136\168\214h4\254\208\155t7o\222\028\011\195\240\140\148\242\148\016b:\2032(\243@Q\141\148R\192\204\155Y\150]\000\128\151\027\141\198\141^\158\205f\243\235B\008\223u\221\203{%:\238U\026[\173\2147\132\016\023\181\214\166\016\226\186\214\250u!\196\197\201\201\201\150\231y\223\148R\254\180V\171\205\196q\012q\028C\031\217w\211\005\203\178\192\178,\240}\127Sk\253\019\207\243~7===ED'\165\148\207\016\209CR\202\132\136NNMM\253~P\201\237g)\001\000\176\177\177Q\173V\171W\015\029:4\023\004\001T\171U\200\178\012\2268\014\152\249\175\136\248H\165R\017\221n7\203\153\012\155S\132\136d\219\182\138\162\136\152\249mD\252\162eY\142R\010\1940\004\199q`ggg\189R\169<>66\022\021\213n\168$^YYAD\164j\181\250\253z\189>\231\251~\006\000\020\134\161\142\227\152\165\148\142m\219G\133\016\034\138\034\002\0005\172\240\185 \002\000T\020E$\132\016\182m\031\149R:q\028s\024\134\026\000\200\247\253\172^\175\207\197q\252\003D\164\149\149\021\028\202\003\185\245\217\243\188)D\188jY\214}q\028s\175\128\156\007\231\001!\249\167h13\153\166\137i\154n\153\166\249\216\216\216X+/\004\180\151\0078O\154\023k\181\218X\028\199Tf\221\131\018\190\031-D\020I\146P\173V\251B\028\199/\2302\241@\015\020\025\223l6\191,\165\092\005\000c\191h\153[\147\017Q\020r1303\229\244q\159\2021\000dq\028\031;|\248\240\149\222\170\244\009\203\174\174\174J\000\000!\196\011\150e\025Z\235}\161$\017\145R\010m\219\022DDZ\235Xk\029\019\017\217\182-\148RHD\251j\224\180\214lY\1502M\243\135\187e,U\224\216\177c\133\192oI)QJ\137\204\204\1952\170V\171\130\153;A\016\188\132\136\199\1940\188?\012\195\251\017\241X\020E/\017\209v\181Z\021\195\026\166\232b\165\148HDo\247\200\248i$FD\205\204\184\184\184x\238\212\169S\166\148r\1930\012L\146\132\133\016\1310\131\028\199\017Y\150\253Mk\253\252\244\244\244\149\158+o\002\192\155\158\231\189\170\181~\197q\156\195Q\020\209\160\202EDl\154&\018\017\251\190\191x\225\194\133sy\248\232\161z!\215u\151\180\214'\181\214\029\2114\251z\130\153I)\133Z\235\127EQt\202u\221+kkkF^\205\016\000\144\153\197\218\218\154\225\186\238\229(\138\206\164i\250\177R\010\153\153\250Y\2224M\212Zw\180\214']\215]\026\186\023\202{\028\152\157\157\149\174\235\190\230y^\147\153_\151R\142\246\011_\1950\208\247\253\149\007\031|\240\242\250\250\186977\151\148$\034\173\175\175\155333o6\155\205\149j\181\250\221,\203J\141\034\165\196,\203>f\230g\092\215\189\178\188\188,\143\031?Ne-\197P\189P\171\213\186n\024\198\145$I>U\175\017\017\136\136\012\195\248\234\196\196\196\229]\002\247\029~\222\127\255\253\167\136\232\146\016B\244:\182\176~\154\166\215\167\166\166f\247\234\133\196^%\172\221nW\152y\156\136\250\213k@\196\132\153\223\205\203\231 z\128\136,\165\188\142\136I\217]DD\034\002f\158h\183\219\149\189&\182a{\151\130\200\129m\019\006\224\011\247\240\188\253\129\134\153qrr2\018B|(\132\1282\1549H\153\136x\132\153q\016\223\252.j\173\031\202A\178\244\142\016\002\132\016\031NNNF{\001\169\232'\248\242\242\178\204g\129'\000`\092k]\026BDDyG\250\028\034\242\198\198\1341\128\159\129\136\172\181>Q\169TD\025\168!\034j\173\129\136\198=\207{\002\017yyyY\246SD\148\009\191\184\184\136\243\243\243\218\243\188\019B\1367\148R\163\131\192'MS\182m\251\248\230\230\230\147sssIQFs\143 3\139\229\229e\019\017\147\247\222{\239i\2114\143\167i\202\131@\2094\205Q!\196\027\158\231\157\152\159\159\215\139\139\139X\166D\223\016\242<oAJyQJyOY\245\217\221teY\198J\169\207U*\149WZ\173\214\147\143>\250h\138\136\148'5#\034\205\207\207'\173V\235)\219\182_VJ\141fY\198\253\128\012\0171I\018\150R\222#\165\188\232y\222\194P\019\0253KD\212\173V\235\172\2278?\011\195\144\251U\1592\1719\142\131q\028ok\173\127+\165\252M\024\134\215k\181\026'I2'\165\2526\034~\203\178\172CA\016\176\148\018\135)\030B\008\168V\171\024\004\193\217\169\169\169\159\0232\150\002\217\234\234jA\244\017\1735k\173Y\244n\168\250\028)%\134aH\134a\140X\150\245\189(\138\190c\219v\154e\025\008!\012\219\182E\154\166\016\134!I)\135\162\153\231\003i\173\001\000\030\233\145\241\127\167\157ffMDO7\026\141\171\003\219\233\25226\026\141\171Dt\190Z\173\0343\235\219\024N\0043\003\017A\014J\144\175L\246k\012\157\203\240\2352\225\251%qQ9\206\249\190\127\195\178,Q\214t\013\0114\251\004\202\222\145R\004A\240O\203\178\206\229\145\176w\021\202\007h\209h4<\000\248\149R\010\001\128\242G\023\137eY\022\034\034\244\235(\247\177\157\000\203\1780\007J\006\000]\2403\012\003\153\249\151\227\227\227\222\202\202J\233je\224Z\229\198\141\027\149(\138\2544222\231\251\254\127e\173\210\237v5\017\189\211\187V\169\213j\176\189\189}{k\149\226\226\248\248x \165<\027\134a\135\153\1630\012\223\234v\187K\136\248\176\231y\1433\243\1378\1427\235\245\186\202Cm\024\225\193\178,Q\175\215U\028\199\155\000p\194u\221\199\017\241\225n\183\187\020\134\225[9\175\142\148\242\236\248\248x\208O\248\253\172\022\159@\196\218\249\243\231\255\216\187\171l6\155c\000pF)\245<\034\206\220\233jqaaA\156>}\250k\204\236\187\174{\229\142\191!,,,\244\238\131\254\211\151\020\161\150+\242l\167\211\225V\171\149\182Z-\238\243\164\157N\135\219\237\246\179\189\225\154\023\0149\136\247m\181\211KKK\180{\189\142\136\186\176\008\034R\222\247(\1950\222\013\130\128v+U\006\172A\016\144\016\226]fVkkkF\017\0269v\232\221\235\245\1896\211C\127\224\232\029\164w\159\163G\143jD$\207\243\182\001\224\239\134aL\166iZ\182i\003\1950D\154\166m\000\216F\196\172L\217b\015t\160\0318\246\202K\000\000\199q>\018B\180-\203\202\000\160\011\000I\207\211\181,+\019B\180\029\199\249\232\160\006$u@@$\016\241V\187\221\254\203\200\200\200\147\182m\171~\031\249\130 \248\243\189\247\222{\171\216\193~\230\010\020\237G>\023\252\162\221n\255\1954\205C\253>\1792\243\171=\225\242\255}\238\254\213\224\238\185\195\243o|+&\158\252\132\001\156\000\000\000\000IEND\174B`\130",
@@ -7982,10 +7978,10 @@ do
 	K.lxIcons = {}
 	function K.lxIcon(name)
 		if K.lxIcons[name] then return K.lxIcons[name] end
-		local data = LX_PNG[name]
+		local data = LXSplorer_PNG[name]
 		if not data then return nil end
-		K.ensureFolder("LX/ui")
-		local path = "LX/ui/lx_" .. name .. "_" .. #data .. ".png"
+		K.ensureFolder("LXSplorer/ui")
+		local path = "LXSplorer/ui/lx_" .. name .. "_" .. #data .. ".png"
 		local okF, has = pcall(isfile, path)
 		if not (okF and has) and not pcall(writefile, path, data) then return nil end
 		local ok, id = pcall(getcustomasset, path)
@@ -7997,7 +7993,7 @@ do
 		return nil
 	end
 	task.spawn(function()
-		for name in pairs(LX_PNG) do
+		for name in pairs(LXSplorer_PNG) do
 			if not K.alive then break end
 			pcall(K.lxIcon, name)
 			task.wait()
@@ -8028,8 +8024,8 @@ do
 		if K.ribbonIcons[key] then return K.ribbonIcons[key] end
 		local data = set[best]
 		if type(data) ~= "string" then return nil end
-		K.ensureFolder("LX/ui")
-		local path = "LX/ui/ribbon_" .. key .. "_" .. #data .. ".png"
+		K.ensureFolder("LXSplorer/ui")
+		local path = "LXSplorer/ui/ribbon_" .. key .. "_" .. #data .. ".png"
 		local okF, has = pcall(isfile, path)
 		if not (okF and has) and not pcall(writefile, path, data) then return nil end
 		local ok, id = pcall(getcustomasset, path)
@@ -8172,7 +8168,7 @@ do
 
 	function K.writeJson(path, t)
 		local wf = writefile
-		pcall(K.ensureFolder, path:match("^(.*)/[^/]+$") or "LX")
+		pcall(K.ensureFolder, path:match("^(.*)/[^/]+$") or "LXSplorer")
 		local ok, data = pcall(function() return game:GetService("HttpService"):JSONEncode(t) end)
 		return ok and pcall(wf, path, data)
 	end
@@ -8588,7 +8584,7 @@ task.spawn(function()
 			spoofSrc = "", spoofFn = nil, hooks = {}, version = 0,
 		}
 		Delve.spy = Spy
-		local CFG = "LX/hookspy.json"
+		local CFG = "LXSplorer/hookspy.json"
 		local hmm = envFn("hookmetamethod")
 		local hf = envFn("hookfunction", "replaceclosure")
 		local gnm = envFn("getnamecallmethod")
@@ -8930,7 +8926,7 @@ task.spawn(function()
 
 	local P = { loaded = {}, order = {} }
 	Delve.plugins = P
-	local DIR = "LX/plugins"
+	local DIR = "LXSplorer/plugins"
 	local ls = envFn("loadstring") or loadstring
 	local rf, wf, lf, df = readfile, writefile, listfiles, delfile
 
@@ -9070,7 +9066,7 @@ task.spawn(function()
 				if not (fn and win.frame.Visible) then return end
 				idx = 0
 				local ok, err = pcall(fn, g)
-				if not ok then warn("[LX] imgui " .. tostring(name) .. ": " .. tostring(err)); fn = nil end
+				if not ok then fn = nil end
 				for i = idx + 1, #pool do pool[i].frame.Visible = false end
 			end)
 		end
@@ -9224,7 +9220,6 @@ task.spawn(function()
 		for _, f in ipairs(files) do
 			if f:match("%.lua$") or f:match("%.luau$") or f:match("%.txt$") then
 				local okL, e = pcall(P.loadFile, f)
-				if okL and e and not e.ok then warn("[LX] plugin " .. e.name .. " failed: " .. tostring(e.err)) end
 			end
 		end
 	end
